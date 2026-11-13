@@ -97,7 +97,23 @@ object Ticker {
 
     fun spend(n: Int) { budget -= n }
 
+    /** Time Foremon spent in its tick since the last [resetTiming], for /foremon admin perf and the stress test. */
+    @Volatile var spentNanos = 0L
+        private set
+    @Volatile var measuredTicks = 0L
+        private set
+
+    fun resetTiming() { spentNanos = 0L; measuredTicks = 0L }
+
     fun tick(level: ServerLevel) {
+        val t0 = System.nanoTime()
+        try { tickSites(level) } finally {
+            spentNanos += System.nanoTime() - t0
+            if (level.dimension() == net.minecraft.world.level.Level.OVERWORLD) measuredTicks++
+        }
+    }
+
+    private fun tickSites(level: ServerLevel) {
         val store = SiteStore.of(level)
         if (store.sites.isEmpty()) return
         if (level.dimension().location().toString() in Config.a.blockedDimensions) return

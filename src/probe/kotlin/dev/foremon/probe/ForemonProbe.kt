@@ -60,6 +60,8 @@ object ForemonProbe : ClientModInitializer {
         when (System.getenv("FOREMON_PROBE")) {
             "markers" -> markersScript()
             "litematica" -> litematicaScript()
+            "restart" -> restartScript()
+            "ui" -> uiScript()
             else -> script()
         }
         // The test must keep running when its window is not in front; a paused game would look like a stuck worker.
@@ -221,6 +223,194 @@ object ForemonProbe : ClientModInitializer {
             report(mc, "after building")
         }
         step("done", 10) { mc -> log.info("PROBE DONE") }
+        step("quit", 10) { mc -> mc.stop() }
+    }
+
+    /** What the probe counted on the server: materials everywhere (chest + worker + placed) and the site's state. */
+    private class Count(val total: Int, val placed: Int, val workers: Int, val entities: Int, val planIndex: Int, val active: Boolean, val chestPlanks: Int)
+
+    @Volatile private var counted: Count? = null
+
+    private fun countMaterials(mc: Minecraft, where: BlockPos, label: String) {
+        val server = mc.singleplayerServer ?: run { log.info("PROBE {}: no server", label); return }
+        server.execute {
+            val level = server.overworld()
+            val site = SiteStore.of(level).sites[chest]
+            if (site == null) { log.info("PROBE {}: NO SITE", label); counted = Count(-1, -1, 0, 0, -1, false, -1); return@execute }
+            val wanted = setOf(net.minecraft.world.item.Items.OAK_PLANKS, net.minecraft.world.item.Items.COBBLESTONE, net.minecraft.world.item.Items.TORCH)
+            var inChest = 0; var planks = 0
+            Inv.storage(level, chest)?.let { st -> for (v in st.nonEmptyViews()) if (v.resource.item in wanted) { inChest += v.amount.toInt(); if (v.resource.item == net.minecraft.world.item.Items.OAK_PLANKS) planks += v.amount.toInt() } }
+            var onWorkers = 0
+            for (w in site.workers) for (st in w.carried + w.supplies) if (st.item in wanted) onWorkers += st.count
+            var placed = 0
+            for (x in 0 until 5) for (z in 0 until 5) {
+                if (level.getBlockState(where.offset(x, 0, z)).`is`(net.minecraft.world.level.block.Blocks.OAK_PLANKS)) placed++
+                if (level.getBlockState(where.offset(x, 1, z)).`is`(net.minecraft.world.level.block.Blocks.COBBLESTONE)) placed++
+            }
+            if (level.getBlockState(where.offset(2, 1, 2)).`is`(net.minecraft.world.level.block.Blocks.TORCH)) placed++
+            val entities = site.workers.count { Workers.entity(level, it) != null }
+            val c = Count(inChest + onWorkers + placed, placed, site.workers.size, entities, site.plan?.index ?: -1, site.active, planks)
+            counted = c
+            log.info("PROBE {}: materials total={} (chest={} on workers={} placed={}), workers={} with entity={}, plan index={}, active={}",
+                label, c.total, inChest, onWorkers, placed, c.workers, c.entities, c.planIndex, c.active)
+        }
+    }
+
+    /**
+     * Save and reload: a build half done, a worker carrying materials, then Save and Quit and open the world again.
+     * Checks that nothing is lost or doubled, the worker comes back, and the build carries on and finishes.
+     */
+    private fun restartScript() {
+        lateinit var where: BlockPos
+        var before: Count? = null
+        step("create world", 60, { it.screen is TitleScreen }) { mc ->
+            mc.createWorldOpenFlows().createFreshLevel(
+                "Foremon Test",
+                LevelSettings("Foremon Test", GameType.CREATIVE, false, Difficulty.PEACEFUL, true, GameRules(), WorldDataConfiguration.DEFAULT),
+                WorldOptions(1L, false, false),
+                { ra -> ra.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions() },
+                mc.screen
+            )
+        }
+        step("commands", 100, { it.player != null && it.level != null }) { mc ->
+            origin = mc.player!!.blockPosition()
+            chest = origin.offset(3, 0, 0)
+            where = origin.offset(-3, 0, 3)
+            for (c in listOf(
+                "gamerule doDaylightCycle false", "time set noon", "weather clear", "gamerule doMobSpawning false",
+                "give @s foremon:whistle", "pokegive machop level=30", "pokegive bulbasaur level=10",
+                "setblock ${chest.x} ${chest.y} ${chest.z} minecraft:chest",
+                "item replace block ${chest.x} ${chest.y} ${chest.z} container.0 with minecraft:oak_planks 30",
+                "item replace block ${chest.x} ${chest.y} ${chest.z} container.1 with minecraft:cobblestone 20",
+                "item replace block ${chest.x} ${chest.y} ${chest.z} container.2 with minecraft:torch 2",
+            )) cmd(mc, c)
+        }
+        step("close any screen", 60) { mc -> mc.setScreen(null) }
+        step("use whistle on chest", 20) { mc -> useWhistleOnChest(mc) }
+        step("assign machop", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
+        step("switch to building", 20) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
+        step("give the site a plan", 10) { mc ->
+            val server = mc.singleplayerServer!!
+            server.execute {
+                val site = SiteStore.of(server.overworld()).sites[chest] ?: return@execute
+                val blocks = ArrayList<Pair<BlockPos, net.minecraft.world.level.block.state.BlockState>>()
+                for (x in 0 until 5) for (z in 0 until 5) {
+                    blocks.add(where.offset(x, 0, z) to net.minecraft.world.level.block.Blocks.OAK_PLANKS.defaultBlockState())
+                    if (x == 0 || x == 4 || z == 0 || z == 4) blocks.add(where.offset(x, 1, z) to net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState())
+                }
+                blocks.add(where.offset(2, 1, 2) to net.minecraft.world.level.block.Blocks.TORCH.defaultBlockState())
+                site.plan = dev.foremon.world.Plan.ordered("restart test", blocks)
+            }
+        }
+        step("press Start", 10) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
+        step("close", 5) { mc -> mc.setScreen(null) }
+        step("count before saving", 120) { mc -> countMaterials(mc, where, "BEFORE SAVE") }
+        step("save and quit to the title screen", 10) { mc ->
+            before = counted
+            mc.level?.disconnect()
+            mc.disconnect(net.minecraft.client.gui.screens.GenericMessageScreen(net.minecraft.network.chat.Component.literal("Saving")))
+            mc.setScreen(TitleScreen())
+        }
+        step("open the world again", 60, { it.screen is TitleScreen && it.level == null && it.singleplayerServer == null }) { mc ->
+            mc.createWorldOpenFlows().openWorld("Foremon Test") { log.error("PROBE FAIL: opening the world was cancelled") }
+        }
+        step("count right after loading", 100, { it.player != null && it.level != null }) { mc ->
+            mc.setScreen(null)
+            countMaterials(mc, where, "AFTER LOAD")
+        }
+        step("compare", 20) { _ ->
+            val a = before; val b = counted
+            if (a == null || b == null) log.error("PROBE FAIL: missing counts")
+            else {
+                log.info("PROBE RESTART CHECK: materials {} -> {} ({}), workers {} -> {}, worker entities after load {}, plan index {} -> {}, active {} -> {}",
+                    a.total, b.total, if (a.total == b.total) "nothing lost or doubled" else "MISMATCH",
+                    a.workers, b.workers, b.entities, a.planIndex, b.planIndex, a.active, b.active)
+            }
+        }
+        step("let it finish", 600) { mc -> countMaterials(mc, where, "FINISHED") }
+        step("final check", 20) { _ ->
+            val c = counted
+            log.info("PROBE RESTART FINAL: placed {} of 42, materials total {} (started with 52), active {}", c?.placed, c?.total, c?.active)
+            log.info("PROBE DONE")
+        }
+        step("quit", 10) { mc -> mc.stop() }
+    }
+
+    /** Moves the real mouse pointer to a GUI position, so hover tooltips show up as they would for a player. */
+    private fun pointAt(mc: Minecraft, p: Pair<Int, Int>) {
+        // The game only reads the pointer when the OS reports a move, so the position is set where it keeps it.
+        val scale = mc.window.guiScale
+        for ((name, v) in listOf("xpos" to p.first * scale, "ypos" to p.second * scale)) {
+            val f = mc.mouseHandler.javaClass.getDeclaredField(name); f.isAccessible = true; f.setDouble(mc.mouseHandler, v)
+        }
+    }
+
+    private fun siteState(mc: Minecraft, label: String) {
+        val server = mc.singleplayerServer ?: return
+        server.execute {
+            val site = SiteStore.of(server.overworld()).sites[chest]
+            val party = com.cobblemon.mod.common.Cobblemon.storage.getParty(mc.player!!.uuid, server.registryAccess()).count()
+            log.info("PROBE {}: active={} workers={} party={} upkeep setting={}", label, site?.active, site?.workers?.size, party, dev.foremon.Config.d.upkeep)
+        }
+    }
+
+    /** The menu controls nobody had seen working: Start and Pause, hover tooltips, sending a worker home, and a server setting. */
+    private fun uiScript() {
+        step("create world", 60, { it.screen is TitleScreen }) { mc ->
+            mc.createWorldOpenFlows().createFreshLevel(
+                "Foremon Test",
+                LevelSettings("Foremon Test", GameType.CREATIVE, false, Difficulty.PEACEFUL, true, GameRules(), WorldDataConfiguration.DEFAULT),
+                WorldOptions(1L, false, false),
+                { ra -> ra.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions() },
+                mc.screen
+            )
+        }
+        step("commands", 100, { it.player != null && it.level != null }) { mc ->
+            origin = mc.player!!.blockPosition()
+            chest = origin.offset(3, 0, 0)
+            for (c in listOf(
+                "gamerule doDaylightCycle false", "time set noon", "weather clear", "gamerule doMobSpawning false",
+                "give @s foremon:whistle", "pokegive machop level=30", "pokegive bulbasaur level=10",
+                "setblock ${chest.x} ${chest.y} ${chest.z} minecraft:chest",
+                "place feature minecraft:oak ${origin.x + 7} ${origin.y} ${origin.z - 4}",
+            )) cmd(mc, c)
+        }
+        step("close any screen", 60) { mc -> mc.setScreen(null) }
+        step("use whistle on chest", 20) { mc -> useWhistleOnChest(mc) }
+        step("assign machop", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
+        step("press Start", 20) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
+        step("check started", 20) { mc -> siteState(mc, "after Start") }
+        step("press Pause", 10) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
+        step("check paused", 20) { mc -> siteState(mc, "after Pause") }
+        step("hover the worker card", 5) { mc ->
+            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height)
+            pointAt(mc, (l.cx + (l.cw - 4) / 4) to (l.y0 + 52 + 11 + 18))
+        }
+        step("shot: worker tooltip", 20) { mc -> shot(mc, "50_worker_tooltip") }
+        step("hover a party Pokemon", 5) { mc -> val s = mc.screen as SiteScreen; pointAt(mc, Layout(s.width, s.height).party(0)) }
+        step("shot: party tooltip", 20) { mc -> shot(mc, "51_party_tooltip") }
+        step("click the worker card to send it home", 5) { mc ->
+            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height)
+            click(mc, (l.cx + (l.cw - 4) / 4) to (l.y0 + 52 + 11 + 18))
+        }
+        step("check sent home", 30) { mc -> siteState(mc, "after sending home"); shot(mc, "52_after_send_home") }
+        step("open the server tab", 5) { _ -> send("admin") }
+        step("click Stamina and food", 30, { it.screen is HubScreen }) { mc ->
+            val s = mc.screen as HubScreen
+            val w = minOf(430, s.width - 16); val h = minOf(236, s.height - 16)
+            val x0 = (s.width - w) / 2; val y0 = (s.height - h) / 2
+            val rowY = y0 + 34 + 14 + 4 * 22
+            click(mc, (x0 + 6 + (w - 12) - 62 + 30) to (rowY + 2 + 8))
+        }
+        step("check the setting changed", 30) { mc -> siteState(mc, "after clicking Stamina and food"); shot(mc, "53_server_setting") }
+        step("click it again to put it back", 5) { mc ->
+            val s = mc.screen as HubScreen
+            val w = minOf(430, s.width - 16); val h = minOf(236, s.height - 16)
+            val x0 = (s.width - w) / 2; val y0 = (s.height - h) / 2
+            click(mc, (x0 + 6 + (w - 12) - 62 + 30) to (y0 + 34 + 14 + 4 * 22 + 2 + 8))
+        }
+        step("check it is back", 30) { mc -> siteState(mc, "after clicking again") }
+        step("done", 10) { _ -> log.info("PROBE DONE") }
         step("quit", 10) { mc -> mc.stop() }
     }
 

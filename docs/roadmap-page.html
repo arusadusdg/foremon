@@ -1,0 +1,41 @@
+<title>Foremon Roadmap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;800&display=swap">
+<style>
+/* Layout: a route map like a Pokemon region trail, each stop a badge gym, badges earned top to bottom */
+:root{--bg:#eef3f9;--panel:#ffffff;--fg:#1b2433;--muted:#5d6b80;--red:#e03a3a;--line:#c9d4e3;--done:#2e9e5b;--now:#e9a91c;--later:#6b7fa6;
+--px:"Press Start 2P",ui-monospace,monospace;--body:"Nunito",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121826;--panel:#1b2335;--fg:#e8eef8;--muted:#9aa8be;--line:#2c3850;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121826;--panel:#1b2335;--fg:#e8eef8;--muted:#9aa8be;--line:#2c3850;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:860px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;gap:16px;align-items:center;margin-bottom:28px}
+.ball{width:52px;height:52px;flex:none;border-radius:50%;border:4px solid #141414;background:linear-gradient(var(--red) 0 46%,#141414 46% 54%,#f4f4f4 54%);position:relative}
+.ball::after{content:"";position:absolute;inset:14px;border-radius:50%;background:#f4f4f4;border:4px solid #141414}
+h1{font-family:var(--px);font-size:clamp(16px,4vw,22px);margin:0 0 6px;line-height:1.4}
+header p{margin:0;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 24px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c)}
+.route{position:relative;display:grid;gap:18px;padding-left:34px}
+.route::before{content:"";position:absolute;left:12px;top:8px;bottom:8px;border-left:4px dashed var(--line)}
+.stop{position:relative;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:16px 18px}
+.stop::before{content:"";position:absolute;left:-31px;top:18px;width:18px;height:18px;border-radius:50%;background:var(--c);border:3px solid var(--bg);box-shadow:0 0 0 2px var(--c)}
+.tag{font-family:var(--px);font-size:9px;letter-spacing:.06em;color:var(--c)}
+h2{font-size:18px;margin:6px 0 4px;text-wrap:balance}
+.when{font-size:13px;color:var(--muted);margin:0 0 10px}
+ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.done{--c:var(--done)}.now{--c:var(--now)}.later{--c:var(--later)}
+</style>
+<div class="wrap">
+<header><div class="ball" aria-hidden="true"></div><div><h1>Foremon Roadmap</h1><p>Where the worker Pokemon go next. Later stops come sooner with more players.</p></div></header>
+<div class="legend"><span style="--c:var(--done)">Badge earned</span><span style="--c:var(--now)">Next up</span><span style="--c:var(--later)">With more players or time</span></div>
+<div class="route">
+<section class="stop done"><div class="tag">BADGE 1 · V1.0</div><h2>Pallet Town: first release</h2><p class="when">Out now</p><ul><li>Job sites on any chest, 8 jobs</li><li>Build straight from Litematica</li><li>Stats, types, abilities, moves and natures decide who works best</li><li>Level perks: Leaf Sweep, Timber, Vein Miner and more</li><li>Skill tree, Work Dex, PC box picker, Poke Ball chests with own filters</li></ul></section>
+<section class="stop now"><div class="tag">BADGE 2 · V1.1</div><h2>Polish route</h2><p class="when">First weeks, from your feedback</p><ul><li>Material checklist for builds</li><li>Melons, pumpkins, sugar cane, cocoa, bamboo</li><li>Advancements that teach the mod</li><li>Jade tooltips and REI/EMI pages</li><li>Translations</li></ul></section>
+<section class="stop now"><div class="tag">BADGE 3 · V1.2</div><h2>Cobblemon 1.8</h2><p class="when">Soon after 1.1</p><ul><li>Port to the current Cobblemon</li><li>NeoForge build</li></ul></section>
+<section class="stop later"><div class="tag">BADGE 4</div><h2>New jobs</h2><p class="when">With more players</p><ul><li>Fishing for Water types</li><li>Ranching: shearing, eggs, milk</li><li>Lighting: torches in dark spots</li><li>Guarding sites at night</li></ul></section>
+<section class="stop later"><div class="tag">BADGE 5</div><h2>Feels like Pokemon</h2><p class="when">With more players</p><ul><li>Moves that look like moves: Cut slashes, Psychic lifts</li><li>Hard hats and outfits for workers</li><li>Work ribbons in the summary screen</li><li>Day and night shifts by type</li></ul></section>
+<section class="stop later"><div class="tag">BADGE 6</div><h2>Bigger bases</h2><p class="when">When there is time</p><ul><li>Chains between sites: lumber to smelter to builder</li><li>Builders that place their own scaffolding</li><li>Expeditions: work while chunks are unloaded</li></ul></section>
+<section class="stop later"><div class="tag">BADGE 7</div><h2>Servers</h2><p class="when">When servers ask for it</p><ul><li>Limits per rank (LuckPerms)</li><li>Claim mod support: FTB Chunks, Open Parties and Claims, Flan</li><li>Lag view per player</li></ul></section>
+</div>
+</div>

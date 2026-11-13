@@ -212,11 +212,12 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
             // Name gets the whole top line; the level sits beside the stars, like the party screen in the games.
             g.drawString(font, font.plainSubstrByWidth(m.getString("name"), cardW - 40), cx + 36, cy + 3, 0xFFFFFFFF.toInt(), true)
             val lv = tr("foremon.gui.perk_lv", m.getInt("level")).string
-            g.drawString(font, lv, cx + cardW - 3 - font.width(lv), cy + 13, Pal.POKE_TEXT_SOFT, true)
             stars(g, cx + 36, cy + 13, m.getIntArray("stars").getOrElse(job.ordinal) { 0 })
             if (upkeep) bar(g, cx + 36, cy + 24, cardW - 40, 3, m.getDouble("stamina") / m.getDouble("maxStamina").coerceAtLeast(1.0), if (m.getBoolean("resting")) Pal.WARN else Pal.GOOD)
             val mastery = m.getIntArray("mastery").getOrElse(job.ordinal) { 0 }
-            clip(g, tr(if (m.getBoolean("resting")) "foremon.gui.resting" else "foremon.mastery.$mastery"), cx + 36, cy + 28, cardW - 38, Pal.POKE_TEXT_SOFT)
+            // Level on the bottom line, right-aligned, so it never covers the stars or the name.
+            g.drawString(font, lv, cx + cardW - 3 - font.width(lv), cy + 28, Pal.POKE_TEXT_SOFT, true)
+            clip(g, tr(if (m.getBoolean("resting")) "foremon.gui.resting" else "foremon.mastery.$mastery"), cx + 36, cy + 28, cardW - 42 - font.width(lv), Pal.POKE_TEXT_SOFT)
             if (hot) tip = monTip(m, "foremon.gui.click_unassign")
             click(cx, cy, cardW, 36) { op("unassign") { t -> t.putUUID("pokemon", m.getUUID("id")) } }
         }

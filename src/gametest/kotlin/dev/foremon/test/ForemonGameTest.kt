@@ -465,6 +465,179 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
+    /**
+     * 5 job sites with 4 workers each, all mining at once, for 600 ticks. Measures Foremon's own time per tick
+     * and the whole server tick (which also includes Cobblemon moving and animating 20 Pokemon).
+     * Runs in its own batch because it builds outside the normal test area.
+     */
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1400, batch = "stress")
+    fun stressTwentyWorkersFiveSites(helper: GameTestHelper) {
+        setup(helper)
+        val level = helper.level
+        val base = helper.absolutePos(BlockPos(0, 0, 0))
+        for (x in -2..46) for (z in -2..14) level.setBlockAndUpdate(base.offset(x, 0, z), Blocks.STONE.defaultBlockState())
+        val sites = ArrayList<dev.foremon.world.Site>()
+        val species = listOf("geodude", "machop", "onix", "diglett", "sandshrew")
+        for (i in 0 until 5) {
+            val sx = i * 9
+            val chestPos = base.offset(sx + 1, 1, 1)
+            level.setBlockAndUpdate(chestPos, Blocks.CHEST.defaultBlockState())
+            for (x in 2..7) for (z in 4..9) for (y in 1..3) level.setBlockAndUpdate(base.offset(sx + x, y, z), Blocks.DIRT.defaultBlockState())
+            val s = dev.foremon.world.Site(chestPos, owner, "tester")
+            s.job = Job.MINING
+            s.cornerA = base.offset(sx + 2, 1, 4); s.cornerB = base.offset(sx + 7, 3, 9)
+            SiteStore.of(level).sites[chestPos] = s
+            repeat(4) { k -> worker(helper, s, species[(i + k) % species.size]) }
+            s.active = true
+            sites.add(s)
+        }
+        val tickTimes = ArrayList<Long>()
+        var last = 0L
+        var ticks = 0
+        dev.foremon.work.Ticker.resetTiming()
+        helper.onEachTick {
+            val now = System.nanoTime()
+            if (last != 0L) tickTimes.add(now - last)
+            last = now
+            ticks++
+        }
+        helper.runAfterDelay(600) {
+            val foremonMs = dev.foremon.work.Ticker.spentNanos / 1_000_000.0 / dev.foremon.work.Ticker.measuredTicks.coerceAtLeast(1)
+            val sorted = tickTimes.sorted()
+            val avg = tickTimes.average() / 1_000_000.0
+            val p95 = sorted[(sorted.size * 95 / 100).coerceAtMost(sorted.size - 1)] / 1_000_000.0
+            val mined = sites.sumOf { it.done }
+            dev.foremon.Foremon.LOG.info("STRESS RESULT: 20 workers on 5 sites for {} ticks: Foremon {} ms per tick; whole server tick average {} ms, 95th percentile {} ms; {} blocks mined",
+                ticks, "%.3f".format(java.util.Locale.ROOT, foremonMs), "%.2f".format(java.util.Locale.ROOT, avg), "%.2f".format(java.util.Locale.ROOT, p95), mined)
+            sites.forEach { s -> Workers.dissolve(level, s); SiteStore.of(level).sites.remove(s.pos) }
+            if (mined < 40) fail("the crews barely worked ($mined blocks), so the timing means nothing")
+            if (foremonMs > 2.0) fail("Foremon took $foremonMs ms per tick with 20 workers; the budget is 2 ms")
+            helper.succeed()
+        }
+    }
+
+    // ------------------------------------------------------------ level perks
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun wideHarvestTakesTheRowInOneAction(helper: GameTestHelper) {
+        setup(helper)
+        for (x in 3..4) {
+            helper.setBlock(BlockPos(x, 0, 4), Blocks.FARMLAND)
+            helper.setBlock(BlockPos(x, 1, 4), (Blocks.WHEAT as net.minecraft.world.level.block.CropBlock).getStateForAge(7))
+        }
+        val s = site(helper, BlockPos(1, 1, 1), Job.FARMING)
+        worker(helper, s, "bulbasaur", 20)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.WHEAT) < 2) fail("wheat has not reached the chest yet")
+            if (s.done != 1L) fail("a level 20 farmer has Wide Harvest, so 2 crops side by side should take 1 action, not ${s.done}")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun bigBatchSmeltsTwoAtOnceAtLevel20(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.SMELTING)
+        put(helper, s, ItemStack(Items.RAW_IRON, 4))
+        worker(helper, s, "charmander", 20)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.IRON_INGOT) < 4) fail("ingots not delivered yet")
+            if (s.done != 2L) fail("Big Batch at level 20 smelts 2 at once, so 4 raw iron should take 2 actions, not ${s.done}")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun quickHandsBuildsTwoBlocksPerActionAtLevel25(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.BUILDING)
+        val blocks = ArrayList<Pair<BlockPos, net.minecraft.world.level.block.state.BlockState>>()
+        for (x in 3..6) blocks.add(helper.absolutePos(BlockPos(x, 1, 4)) to Blocks.OAK_PLANKS.defaultBlockState())
+        s.plan = Plan.ordered("test", blocks)
+        put(helper, s, ItemStack(Items.OAK_PLANKS, 8))
+        worker(helper, s, "machop", 25)
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..6) if (!helper.getBlockState(BlockPos(x, 1, 4)).`is`(Blocks.OAK_PLANKS)) fail("row not built yet")
+            if (s.done > 2L) fail("Quick Hands at level 25 places 2 blocks per action, so 4 blocks should take at most 2 actions, not ${s.done}")
+            if (count(helper, s.pos, Items.OAK_PLANKS) != 4) fail("exactly 4 planks should have been used")
+            cleanup(helper, s)
+        }
+    }
+
+    // ------------------------------------------------------------ skill upgrades (own batch: they change the shared test owner)
+
+    private fun withSkill(helper: GameTestHelper, node: String, level: Int = 1) { Rules.state(helper.level.server, owner).bought[node] = level }
+    private fun dropSkill(helper: GameTestHelper, node: String) { Rules.state(helper.level.server, owner).bought.remove(node) }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "skills")
+    fun treeFellerSkillFellsTheWholeTreeAtAnyLevel(helper: GameTestHelper) {
+        setup(helper)
+        withSkill(helper, "tree_feller")
+        tree(helper, 5)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop", 5)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.OAK_LOG) < 5) fail("logs have not reached the chest yet")
+            if (s.done != 1L) fail("with Tree Feller even a level 5 Pokemon fells the tree in 1 swing, not ${s.done}")
+            if (leavesLeft(helper, 5) != 0) fail("Tree Feller also clears the leaves")
+            dropSkill(helper, "tree_feller")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "skills")
+    fun veinMinerSkillTakesTheVeinAtAnyLevel(helper: GameTestHelper) {
+        setup(helper)
+        withSkill(helper, "vein_miner")
+        for (x in 3..6) helper.setBlock(BlockPos(x, 1, 4), Blocks.COAL_ORE)
+        val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
+        s.cornerA = helper.absolutePos(BlockPos(3, 1, 4)); s.cornerB = helper.absolutePos(BlockPos(6, 1, 4))
+        worker(helper, s, "geodude", 5)
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..6) if (!helper.getBlockState(BlockPos(x, 1, 4)).isAir) fail("ore not mined yet")
+            if (s.done != 1L) fail("with Vein Miner the whole vein comes out in 1 swing, not ${s.done}")
+            dropSkill(helper, "vein_miner")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "skills")
+    fun twinFurnaceSkillSmeltsTwoAtOnce(helper: GameTestHelper) {
+        setup(helper)
+        withSkill(helper, "twin_furnace")
+        val s = site(helper, BlockPos(1, 1, 1), Job.SMELTING)
+        put(helper, s, ItemStack(Items.RAW_IRON, 4))
+        worker(helper, s, "charmander", 10)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.IRON_INGOT) < 4) fail("ingots not delivered yet")
+            if (s.done != 2L) fail("Twin Furnace smelts 2 at once, so 4 raw iron should take 2 actions, not ${s.done}")
+            dropSkill(helper, "twin_furnace")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200, batch = "skills")
+    fun packMuleSkillCarriesMore(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        val w = worker(helper, s, "machop", 30)
+        val base = Workers.profile(w)!!.carry
+        withSkill(helper, "pack_mule", 2)
+        val c = dev.foremon.work.Ctx(helper.level, s, Inv.storage(helper.level, s.pos)!!, helper.level.gameTime)
+        c.w = w; c.e = Workers.entity(helper.level, w)!!; c.p = w.pokemon!!; c.profile = Workers.profile(w)!!
+        val expected = (base * 1.5).toInt()
+        if (c.capacity() != expected) fail("two levels of Pack Mule should carry ${expected}, not ${c.capacity()}")
+        dropSkill(helper, "pack_mule")
+        cleanup(helper, s)
+        helper.succeed()
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
     fun breakingTheChestSendsWorkersHome(helper: GameTestHelper) {
         setup(helper)

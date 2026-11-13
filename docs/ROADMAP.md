@@ -26,6 +26,21 @@ Status after testing everything on 2026-11-13:
 | Two players on one server | **Not checked:** needs a second player. Each site's work is tied to its owner, so two players' sites should not interact, but nobody has seen it |
 | A real dedicated server | **Partly:** all 23 in-game tests run on a headless server that loads the mod the way a dedicated server does |
 
+## 1b. v1 release checks (2026-11-13)
+
+| What | Result |
+|---|---|
+| Save and reload | **Proven.** Half-built plan, worker carrying materials, Save and Quit, world opened again: all 52 items accounted for (nothing lost or doubled), the worker came back, and the build carried on and finished 42 of 42 |
+| Stress test | **Proven.** 20 workers on 5 sites mining at once for 600 ticks: Foremon 0.26 to 0.67 ms per tick, the whole server tick about 1 to 1.8 ms on average. Budget was 2 ms. `/foremon admin perf` shows the same number on a live server |
+| Level perks | **Proven** in game: Leaf Sweep, Timber, Vein Miner, Wide Harvest, Big Batch, Quick Hands |
+| Skill upgrades | **Proven** in game: Tree Feller, Vein Miner, Twin Furnace, Pack Mule, Work Area. Others are not individually tested |
+| Menu controls | **Proven** in the self-driving game: Start, Pause, hover tooltips (full breakdown with perks), sending a worker home by clicking it (it went back to the party), changing a server setting in the Server tab |
+| Notifications | **Seen** in screenshots (pop-ups for "no trees left" and others) |
+| Name | **Free on Modrinth** (no project called Foremon). CurseForge blocked the automatic check and a web search found nothing |
+| Version, changelog, mod page | **Done:** version 1.0.0, [CHANGELOG.md](../CHANGELOG.md), [MODPAGE.md](MODPAGE.md) |
+| Still for you | Listen for sounds once; try two players on one server; decide on Cobblemon 1.8; put the code on GitHub (needs your account) |
+| Before publishing the source | `gradle.properties` has two lines that only fit this PC (the Java path and the socket fix); move them to your user Gradle settings |
+
 ## 2. Built halfway
 
 | What | What is missing | Effort |

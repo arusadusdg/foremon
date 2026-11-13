@@ -196,6 +196,15 @@ object Foremon : ModInitializer {
                 }
                 c.source.sendSuccess({ Component.literal("$n job sites") }, false); n
             })
+            .then(Commands.literal("perf").executes { c ->
+                val ticks = Ticker.measuredTicks.coerceAtLeast(1)
+                val ms = Ticker.spentNanos / 1_000_000.0 / ticks
+                var sites = 0; var workers = 0; var running = 0
+                for ((_, s) in SiteStore.all(c.source.server)) { sites++; workers += s.workers.size; if (s.active) running++ }
+                c.source.sendSuccess({ Component.literal("Foremon: %.3f ms per tick on average over the last %d ticks; %d job sites (%d running), %d workers. Measuring again from now.".format(java.util.Locale.ROOT, ms, ticks, sites, running, workers)) }, false)
+                Ticker.resetTiming()
+                1
+            })
             .then(Commands.literal("pauseall").executes { c ->
                 var n = 0
                 for ((level, s) in SiteStore.all(c.source.server)) if (s.active) { s.active = false; n++; SiteStore.of(level).setDirty() }
