@@ -2,7 +2,7 @@
 
 ## 1.0.0
 
-First release. Minecraft 1.21.1, Fabric, Cobblemon 1.7.3 or newer.
+First release. Minecraft 1.21.1, Fabric, Cobblemon 1.7.3 or newer. Developed with the help of an AI coding assistant.
 
 ### Jobs
 - Turn any chest into a job site with the Work Whistle and put your Pokemon to work on it.

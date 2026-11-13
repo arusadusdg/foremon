@@ -737,6 +737,10 @@ object Building : JobLogic() {
         var looked = 0
         var missing: Item? = null
         val wanted = LinkedHashMap<Item, Int>()
+        // What the other builders already hold covers the first entries that need it, so a crew shares the
+        // materials out instead of everyone grabbing the same blocks and leaving the chest empty for the rest.
+        val heldByOthers = HashMap<Item, Int>()
+        for (o in c.s.workers) if (o !== c.w) for (st in o.supplies) heldByOthers.merge(st.item, st.count, Int::plus)
         while (i < plan.size && looked < 256 && room > 0) {
             val pos = plan.pos(i); val want = plan.state(i); i++
             if (!c.level.isLoaded(pos)) break
@@ -745,6 +749,8 @@ object Building : JobLogic() {
             val cost = cost(want)
             if (cost.count == 0) continue
             looked++
+            val covered = heldByOthers[cost.item] ?: 0
+            if (covered >= cost.count) { heldByOthers[cost.item] = covered - cost.count; continue }
             val n = min(cost.count, room)
             wanted.merge(cost.item, n, Int::plus); room -= n
         }

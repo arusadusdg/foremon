@@ -2,6 +2,10 @@
 
 Put your Cobblemon to work. A Fabric addon for **Cobblemon 1.7.3+** on **Minecraft 1.21.1**.
 
+> **Made with AI.** Foremon was designed by its author and written with the help of an AI coding
+> assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's
+> direction. Every feature listed here is checked by automated tests in a real Minecraft server.
+
 Turn any chest into a job site, assign Pokemon from your party, and they chop trees, dig out
 areas, sort and haul items, farm, smelt, take buildings apart, and build straight from your
 Litematica placements. Who is good at what depends on the Pokemon: stats, types, ability,

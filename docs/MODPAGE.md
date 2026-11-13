@@ -2,6 +2,10 @@
 
 **Put your Cobblemon to work.**
 
+> **Made with AI.** Foremon was designed by its author and written with the help of an AI coding
+> assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's
+> direction. Every feature listed here is checked by automated tests in a real Minecraft server.
+
 Turn any chest into a job site, assign your Pokemon, and watch them chop trees, dig out mines, farm,
 smelt, sort your storage and build your Litematica schematics, block by block, for real.
 

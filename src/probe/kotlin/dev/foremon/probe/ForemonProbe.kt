@@ -62,6 +62,8 @@ object ForemonProbe : ClientModInitializer {
             "litematica" -> litematicaScript()
             "restart" -> restartScript()
             "ui" -> uiScript()
+            "gif" -> gifScript()
+            "house" -> houseScript()
             else -> script()
         }
         // The test must keep running when its window is not in front; a paused game would look like a stuck worker.
@@ -411,6 +413,158 @@ object ForemonProbe : ClientModInitializer {
         }
         step("check it is back", 30) { mc -> siteState(mc, "after clicking again") }
         step("done", 10) { _ -> log.info("PROBE DONE") }
+        step("quit", 10) { mc -> mc.stop() }
+    }
+
+    /** Saves [count] frames, one every [every] ticks, as run/screenshots/gif_<name>_NNN.png. */
+    private fun frames(name: String, count: Int, every: Int) {
+        for (i in 0 until count) step("frame $name $i", every) { mc -> Screenshot.grab(mc.gameDirectory, "gif_${name}_%03d.png".format(i), mc.mainRenderTarget) { } }
+    }
+
+    /** Footage for the mod page: a level 55 Machop felling a big tree in one swing, then building a Litematica house. */
+    private fun gifScript() {
+        lateinit var where: BlockPos
+        step("create world", 60, { it.screen is TitleScreen }) { mc ->
+            mc.createWorldOpenFlows().createFreshLevel(
+                "Foremon Test",
+                LevelSettings("Foremon Test", GameType.CREATIVE, false, Difficulty.PEACEFUL, true, GameRules(), WorldDataConfiguration.DEFAULT),
+                WorldOptions(1L, false, false),
+                { ra -> ra.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions() },
+                mc.screen
+            )
+        }
+        step("commands", 100, { it.player != null && it.level != null }) { mc ->
+            origin = mc.player!!.blockPosition()
+            chest = origin.offset(3, 0, 0)
+            where = origin.offset(-4, 0, 3)
+            for (c in listOf(
+                "gamerule doDaylightCycle false", "time set 1000", "weather clear", "gamerule doMobSpawning false",
+                "give @s foremon:whistle", "pokegive machop level=55", "pokegive bulbasaur level=10",
+                "setblock ${chest.x} ${chest.y} ${chest.z} minecraft:chest",
+                "place feature minecraft:fancy_oak ${origin.x + 8} ${origin.y} ${origin.z - 3}",
+                "item replace block ${chest.x} ${chest.y} ${chest.z} container.0 with minecraft:oak_planks 30",
+                "item replace block ${chest.x} ${chest.y} ${chest.z} container.1 with minecraft:cobblestone 20",
+                "item replace block ${chest.x} ${chest.y} ${chest.z} container.2 with minecraft:torch 2",
+            )) cmd(mc, c)
+        }
+        step("close any screen", 60) { mc -> mc.setScreen(null) }
+        step("use whistle on chest", 20) { mc -> useWhistleOnChest(mc) }
+        step("assign machop", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
+        step("press Start", 20) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
+        step("camera on the tree", 5) { mc ->
+            mc.setScreen(null)
+            mc.options.hideGui = true
+            mc.toasts.clear()
+            mc.player!!.abilities.flying = true; mc.player!!.onUpdateAbilities()
+            cmd(mc, "tp @s ${origin.x - 1.5} ${origin.y + 3} ${origin.z - 9.5} facing ${origin.x + 6.5} ${origin.y + 4} ${origin.z - 2.5}")
+        }
+        frames("timber", 70, 3)
+        step("camera on the build spot", 10) { mc ->
+            mc.options.hideGui = false
+            placeSchematic(mc, "foremon_test_house.litematic", where)
+            cmd(mc, "tp @s ${origin.x + 1} ${origin.y} ${origin.z} facing ${chest.x} ${chest.y} ${chest.z}")
+        }
+        step("open the site", 30) { mc -> useWhistleOnChest(mc) }
+        step("switch to building", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
+        step("load plan", 20) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.x0 + l.w - 108 + 25) to (l.y0 + 102 + 8)) }
+        step("start building", 40) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
+        step("camera on the house", 5) { mc ->
+            mc.setScreen(null)
+            mc.options.hideGui = true
+            mc.toasts.clear()
+            cmd(mc, "tp @s ${where.x + 7.5} ${origin.y + 3} ${where.z - 4.5} facing ${where.x + 2.5} ${origin.y} ${where.z + 2.5}")
+        }
+        frames("build", 80, 4)
+        step("done", 10) { mc -> mc.options.hideGui = false; log.info("PROBE DONE") }
+        step("quit", 10) { mc -> mc.stop() }
+    }
+
+    /**
+     * Footage of a crew of three building a real village house (Minecraft's own plains big house, converted to a
+     * Litematica file). Materials are worked out from the plan and spread over the site chest and two extra chests.
+     */
+    private fun houseScript() {
+        lateinit var where: BlockPos
+        val extras = ArrayList<BlockPos>()
+        step("create world", 60, { it.screen is TitleScreen }) { mc ->
+            mc.createWorldOpenFlows().createFreshLevel(
+                "Foremon Test",
+                LevelSettings("Foremon Test", GameType.CREATIVE, false, Difficulty.PEACEFUL, true, GameRules(), WorldDataConfiguration.DEFAULT),
+                WorldOptions(1L, false, false),
+                { ra -> ra.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions() },
+                mc.screen
+            )
+        }
+        step("commands", 100, { it.player != null && it.level != null }) { mc ->
+            origin = mc.player!!.blockPosition()
+            chest = origin.offset(4, 0, 0)
+            extras.add(origin.offset(4, 0, -2)); extras.add(origin.offset(4, 0, -4))
+            where = origin.offset(-6, 0, 3)
+            val cmds = arrayListOf(
+                "gamerule doDaylightCycle false", "time set 2000", "weather clear", "gamerule doMobSpawning false",
+                "give @s foremon:whistle", "pokegive machop level=55", "pokegive machoke level=52", "pokegive pidgeot level=50", "pokegive bulbasaur level=10",
+                "setblock ${chest.x} ${chest.y} ${chest.z} minecraft:chest",
+            )
+            for (e in extras) cmds.add("setblock ${e.x} ${e.y} ${e.z} minecraft:chest")
+            cmds.forEach { cmd(mc, it) }
+            // A bigger work area, a taller one and room for three workers: what a player would have bought by then.
+            val server = mc.singleplayerServer!!
+            server.execute {
+                val st = dev.foremon.Rules.state(server, mc.player!!.uuid)
+                st.bought["work_area"] = 1; st.bought["vertical_range"] = 1; st.bought["crew_size"] = 2; st.bought["linked_chests"] = 1
+            }
+        }
+        step("close any screen", 60) { mc -> mc.setScreen(null) }
+        step("place the village house in Litematica", 10) { mc -> placeSchematic(mc, "plains_big_house_1.litematic", where) }
+        step("use whistle on chest", 40) { mc -> useWhistleOnChest(mc) }
+        step("switch to building", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
+        step("load plan", 20) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.x0 + l.w - 108 + 25) to (l.y0 + 102 + 8)) }
+        step("crew, extra chests and materials", 60) { mc ->
+            val server = mc.singleplayerServer!!
+            server.execute {
+                val level = server.overworld()
+                val site = SiteStore.of(level).sites[chest] ?: return@execute
+                val plan = site.plan ?: run { log.error("PROBE FAIL: no plan loaded"); return@execute }
+                for (e in extras) { site.links.add(e); site.chest(e) }
+                // Three workers from the party, keeping one Pokemon in it.
+                val player = server.playerList.players.first()
+                val party = com.cobblemon.mod.common.Cobblemon.storage.getParty(player)
+                for (p in party.toList().filter { it.species.resourceIdentifier.path != "bulbasaur" })
+                    Workers.assign(player, level, site, p)?.let { log.info("PROBE could not assign {}: {}", p.species.name, it) }
+                // Everything the plan costs, plus a little spare, spread over the chests.
+                val need = HashMap<net.minecraft.world.item.Item, Int>()
+                for (i in 0 until plan.size) {
+                    val c = dev.foremon.work.Building.cost(plan.state(i))
+                    if (c.count > 0) need.merge(c.item, c.count, Int::plus)
+                }
+                val stores = (listOf(chest) + extras).mapNotNull { Inv.storage(level, it) }
+                for ((item, n) in need) {
+                    var left = net.minecraft.world.item.ItemStack(item, n + 2)
+                    for (st in stores) { if (left.isEmpty) break; left = Inv.insert(st, left) }
+                    if (!left.isEmpty) log.info("PROBE no room for {} x{}", item, left.count)
+                }
+                log.info("PROBE house: {} blocks in the plan, {} kinds of material, {} workers", plan.size, need.size, site.workers.size)
+            }
+        }
+        step("press Start", 20) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
+        step("camera", 5) { mc ->
+            mc.setScreen(null)
+            mc.options.hideGui = true
+            mc.toasts.clear()
+            // Fly, or the camera drops to the ground the moment it is placed in the air.
+            mc.player!!.abilities.flying = true; mc.player!!.onUpdateAbilities()
+            cmd(mc, "tp @s ${where.x + 10.5} ${origin.y + 7} ${where.z - 1.5} facing ${where.x + 3.5} ${origin.y + 4} ${where.z + 5.5}")
+        }
+        frames("house", 320, 15)
+        step("report", 5) { mc ->
+            val server = mc.singleplayerServer!!
+            server.execute {
+                val site = SiteStore.of(server.overworld()).sites[chest]
+                log.info("PROBE house result: placed {} of {}, skipped {}, status {} {}, active {}", site?.plan?.placed, site?.plan?.size, site?.plan?.skipped, site?.status, site?.statusArg, site?.active)
+                site?.workers?.forEach { w -> log.info("PROBE house worker {} holds {}", w.pokemon?.species?.name, w.supplies.joinToString { "${it.count} ${it.item}" }) }
+            }
+        }
+        step("done", 10) { mc -> mc.options.hideGui = false; log.info("PROBE DONE") }
         step("quit", 10) { mc -> mc.stop() }
     }
 
