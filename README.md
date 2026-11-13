@@ -96,7 +96,7 @@ quits. Add `-Dforemon.debug=true` to any run to log every decision a worker make
 
 The default data files and the language file are generated: edit `tools/gen_rules.py` or
 `tools/gen_assets.py` and run them with `src/main/resources/data/foremon/foremon` and
-`src/main/resources` as their argument. On the development PC Gradle needs `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:/gtmp`.
+`src/main/resources` as their argument. 
 
 ## Licence
 
