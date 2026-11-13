@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "foremon",
+	"version": "${version}",
+	"name": "Foremon",
+	"description": "Put your Cobblemon to work: lumber, mining, sorting, hauling, farming, smelting, and building straight from Litematica.",
+	"license": "MIT",
+	"authors": ["Foremon contributors"],
+	"icon": "assets/foremon/icon.png",
+	"contact": {},
+	"environment": "*",
+	"entrypoints": {
+		"main": [{ "adapter": "kotlin", "value": "dev.foremon.Foremon" }],
+		"client": [{ "adapter": "kotlin", "value": "dev.foremon.client.ForemonClient" }]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "1.21.1",
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*",
+		"cobblemon": ">=1.7.0"
+	}
+}

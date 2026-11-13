@@ -1,0 +1,29 @@
+{
+  "primary_stats": [
+    "speed"
+  ],
+  "secondary_stat": "hp",
+  "base_ticks": 12,
+  "types": {
+    "flying": 0.2,
+    "fighting": 0.15,
+    "normal": 0.1,
+    "dragon": 0.1,
+    "electric": 0.1
+  },
+  "abilities": {
+    "pickup": 0.15,
+    "runaway": 0.15,
+    "quickfeet": 0.2,
+    "unburden": 0.2,
+    "speedboost": 0.2,
+    "galewings": 0.15
+  },
+  "moves": {
+    "strength": 0.15,
+    "fly": 0.15,
+    "teleport": 0.3,
+    "extremespeed": 0.1,
+    "agility": 0.05
+  }
+}

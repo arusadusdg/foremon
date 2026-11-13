@@ -1,0 +1,35 @@
+{
+  "primary_stats": [
+    "attack"
+  ],
+  "secondary_stat": "defence",
+  "base_ticks": 30,
+  "types": {
+    "ground": 0.3,
+    "rock": 0.25,
+    "steel": 0.2,
+    "fighting": 0.15,
+    "flying": -0.2
+  },
+  "abilities": {
+    "sandrush": 0.2,
+    "sandforce": 0.15,
+    "ironfist": 0.15,
+    "sheerforce": 0.2,
+    "hugepower": 0.3,
+    "purepower": 0.3,
+    "moldbreaker": 0.1,
+    "rockhead": 0.1,
+    "sturdy": 0.05
+  },
+  "moves": {
+    "dig": 0.2,
+    "rocksmash": 0.15,
+    "drillrun": 0.15,
+    "earthquake": 0.1,
+    "rockclimb": 0.05
+  },
+  "size": {
+    "large": 0.1
+  }
+}

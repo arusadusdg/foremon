@@ -1,0 +1,39 @@
+{
+  "primary_stats": [
+    "attack"
+  ],
+  "secondary_stat": "speed",
+  "base_ticks": 30,
+  "types": {
+    "grass": 0.2,
+    "bug": 0.2,
+    "fighting": 0.2,
+    "steel": 0.2,
+    "normal": 0.1,
+    "dark": 0.1
+  },
+  "abilities": {
+    "hypercutter": 0.15,
+    "sharpness": 0.2,
+    "technician": 0.1,
+    "guts": 0.1,
+    "hugepower": 0.3,
+    "purepower": 0.3,
+    "sheerforce": 0.2,
+    "toughclaws": 0.15
+  },
+  "moves": {
+    "cut": 0.25,
+    "furycutter": 0.1,
+    "xscissor": 0.1,
+    "slash": 0.1,
+    "leafblade": 0.1,
+    "nightslash": 0.1,
+    "psychocut": 0.1,
+    "headbutt": 0.05,
+    "razorleaf": 0.05
+  },
+  "size": {
+    "large": 0.1
+  }
+}

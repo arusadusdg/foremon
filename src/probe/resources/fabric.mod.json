@@ -1,0 +1,11 @@
+{
+	"schemaVersion": 1,
+	"id": "foremon_probe",
+	"version": "1.0.0",
+	"name": "Foremon self-driving test client",
+	"environment": "client",
+	"entrypoints": {
+		"client": [{ "adapter": "kotlin", "value": "dev.foremon.probe.ForemonProbe" }]
+	},
+	"depends": { "foremon": "*" }
+}

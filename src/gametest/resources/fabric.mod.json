@@ -1,0 +1,11 @@
+{
+	"schemaVersion": 1,
+	"id": "foremon_gametest",
+	"version": "1.0.0",
+	"name": "Foremon game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [{ "adapter": "kotlin", "value": "dev.foremon.test.ForemonGameTest" }]
+	},
+	"depends": { "foremon": "*" }
+}

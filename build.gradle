@@ -1,0 +1,107 @@
+plugins {
+	id 'fabric-loom' version "${loom_version}"
+	id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
+}
+
+base { archivesName = 'foremon' }
+
+repositories {
+	mavenCentral()
+	maven { url = 'https://maven.impactdev.net/repository/development/' }
+	maven { url = 'https://maven.architectury.dev/' }
+	maven { url = 'https://api.modrinth.com/maven' }
+}
+
+sourceSets {
+	// In-game tests: a real headless server with real Cobblemon Pokemon. Not part of the released jar.
+	gametest {
+		compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+		runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+	}
+}
+
+loom {
+	// Client-only code lives in src/client so it can never be loaded on a dedicated server.
+	splitEnvironmentSourceSets()
+	mods {
+		"foremon" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+		"foremon_gametest" {
+			sourceSet sourceSets.gametest
+		}
+	}
+	runs {
+		gametest {
+			server()
+			name "Game Test"
+			source sourceSets.gametest
+			vmArg "-Dfabric-api.gametest"
+			vmArg "-Dfabric-api.gametest.report-file=${project.layout.buildDirectory.get().asFile}/gametest-junit.xml"
+			runDir "build/gametest"
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+	modImplementation "com.cobblemon:fabric:${project.cobblemon_version}"
+
+	// Only in the development game, to test building from Litematica. Not a dependency of the mod.
+	modLocalRuntime "maven.modrinth:litematica:0.19.58"
+	modLocalRuntime "maven.modrinth:malilib:0.21.8"
+
+	testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	filesMatching("fabric.mod.json") { expand "version": version }
+	// Strip indentation from JSON so the jar stays small.
+	filesMatching(['**/*.json', '**/*.mcmeta']) {
+		filter { String line -> line.trim() }
+	}
+}
+
+test { useJUnitPlatform() }
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
+kotlin { jvmToolchain(21) }
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+// A self-driving client used only in development: it plays through the mod and saves screenshots.
+// Declared down here because the client source set only exists after the loom block above.
+sourceSets {
+	probe {
+		compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output + sourceSets.client.compileClasspath + sourceSets.client.output
+		runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output + sourceSets.client.runtimeClasspath + sourceSets.client.output
+	}
+}
+
+loom {
+	mods {
+		"foremon_probe" {
+			sourceSet sourceSets.probe
+		}
+	}
+	runs {
+		probe {
+			client()
+			name "Probe"
+			source sourceSets.probe
+			vmArg "-Dforemon.probe=true"
+			vmArg "-Dforemon.debug=true"
+			runDir "run"
+		}
+	}
+}

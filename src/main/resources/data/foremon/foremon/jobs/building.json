@@ -1,0 +1,34 @@
+{
+  "primary_stats": [
+    "attack",
+    "special_attack"
+  ],
+  "secondary_stat": "speed",
+  "base_ticks": 14,
+  "types": {
+    "fighting": 0.2,
+    "rock": 0.15,
+    "steel": 0.15,
+    "psychic": 0.15,
+    "ground": 0.1,
+    "flying": 0.1
+  },
+  "abilities": {
+    "ironfist": 0.2,
+    "hugepower": 0.3,
+    "purepower": 0.3,
+    "technician": 0.15,
+    "sturdy": 0.1,
+    "skilllink": 0.15
+  },
+  "moves": {
+    "strength": 0.15,
+    "stealthrock": 0.1,
+    "psychic": 0.1,
+    "telekinesis": 0.1,
+    "rockslide": 0.05
+  },
+  "size": {
+    "large": 0.1
+  }
+}

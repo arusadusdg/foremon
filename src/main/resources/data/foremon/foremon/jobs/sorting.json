@@ -1,0 +1,30 @@
+{
+  "primary_stats": [
+    "special_attack"
+  ],
+  "secondary_stat": "special_defence",
+  "base_ticks": 12,
+  "types": {
+    "psychic": 0.3,
+    "ghost": 0.2,
+    "electric": 0.1,
+    "fairy": 0.1
+  },
+  "abilities": {
+    "frisk": 0.2,
+    "telepathy": 0.2,
+    "magician": 0.2,
+    "keeneye": 0.1,
+    "compoundeyes": 0.15,
+    "analytic": 0.15,
+    "forewarn": 0.1
+  },
+  "moves": {
+    "psychic": 0.15,
+    "telekinesis": 0.2,
+    "trick": 0.1,
+    "confusion": 0.05,
+    "teleport": 0.1,
+    "switcheroo": 0.1
+  }
+}

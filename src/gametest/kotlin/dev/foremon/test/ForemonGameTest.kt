@@ -1,0 +1,483 @@
+package dev.foremon.test
+
+import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.api.pokemon.PokemonProperties
+import dev.foremon.Config
+import dev.foremon.Rules
+import dev.foremon.rules.Capability
+import dev.foremon.rules.Job
+import dev.foremon.work.Inv
+import dev.foremon.world.Plan
+import dev.foremon.world.Site
+import dev.foremon.world.SiteStore
+import dev.foremon.world.Worker
+import dev.foremon.world.Workers
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest
+import net.minecraft.core.BlockPos
+import net.minecraft.gametest.framework.GameTest
+import net.minecraft.gametest.framework.GameTestAssertException
+import net.minecraft.gametest.framework.GameTestHelper
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.Blocks
+import java.util.UUID
+
+/**
+ * Runs on a real headless server with real Cobblemon Pokemon: every job is set up in a small test
+ * area, a worker is put on it, and the test waits until the work is actually done in the world.
+ * Run with: gradlew runGametest
+ */
+class ForemonGameTest : FabricGameTest {
+    private val owner = UUID.fromString("00000000-0000-4000-8000-00000000f0e0")
+
+    private fun fail(msg: String): Nothing = throw GameTestAssertException(msg)
+
+    /** A stone floor, an owner who may work while offline (test players are never online), and no upkeep. */
+    private fun setup(helper: GameTestHelper) {
+        Config.d.allowWorkWhileOwnerOffline = true
+        Config.d.upkeep = false
+        Rules.state(helper.level.server, owner).bought["night_shift"] = 1
+        for (x in 0..7) for (z in 0..7) helper.setBlock(BlockPos(x, 0, z), Blocks.STONE)
+    }
+
+    private fun site(helper: GameTestHelper, rel: BlockPos, job: Job): Site {
+        helper.setBlock(rel, Blocks.CHEST)
+        val pos = helper.absolutePos(rel)
+        val s = Site(pos, owner, "tester")
+        s.job = job
+        SiteStore.of(helper.level).sites[pos] = s
+        return s
+    }
+
+    private fun worker(helper: GameTestHelper, s: Site, species: String, pokemonLevel: Int = 40): Worker {
+        val level = helper.level
+        val p = PokemonProperties.parse("$species level=$pokemonLevel").create()
+        val pc = Cobblemon.storage.getPC(owner, level.registryAccess())
+        if (!pc.add(p)) fail("could not put $species in the test PC")
+        val w = Worker(p.uuid)
+        w.pokemon = p
+        s.workers.add(w)
+        Workers.spawn(level, s, w, p)
+        if (Workers.entity(level, w) == null) fail("$species did not spawn")
+        return w
+    }
+
+    private fun put(helper: GameTestHelper, s: Site, stack: ItemStack) {
+        val storage = Inv.storage(helper.level, s.pos) ?: fail("no chest")
+        if (!Inv.insert(storage, stack).isEmpty) fail("chest refused items")
+    }
+
+    private fun count(helper: GameTestHelper, pos: BlockPos, item: Item): Int {
+        val storage = Inv.storage(helper.level, pos) ?: return 0
+        var n = 0
+        for (v in storage.nonEmptyViews()) if (v.resource.item == item) n += v.amount.toInt()
+        return n
+    }
+
+    private fun cleanup(helper: GameTestHelper, s: Site) {
+        Workers.dissolve(helper.level, s)
+        SiteStore.of(helper.level).sites.remove(s.pos)
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun rulesAndProfiles(helper: GameTestHelper) {
+        if (Rules.set.jobs.size != Job.entries.size) fail("job rules did not load from the data pack")
+        if (Rules.skills.nodes.size < 30) fail("skill tree did not load from the data pack")
+        fun profile(s: String) = Workers.profile(PokemonProperties.parse("$s level=30").create())
+        val geodude = profile("geodude"); val pidgey = profile("pidgey"); val charmander = profile("charmander"); val squirtle = profile("squirtle")
+        if (geodude.score(Job.MINING).mult <= pidgey.score(Job.MINING).mult) fail("Geodude should out-mine Pidgey")
+        if (geodude.miningTier <= pidgey.miningTier) fail("Rock/Ground should dig a tier higher")
+        if (!charmander.score(Job.SMELTING).able) fail("Charmander should be able to smelt")
+        if (squirtle.score(Job.SMELTING).able) fail("Squirtle should not be able to smelt")
+        if (Capability.UNDERWATER !in squirtle.capabilities) fail("Squirtle should work underwater")
+        helper.succeed()
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun lumberFellsATree(helper: GameTestHelper) {
+        setup(helper)
+        helper.setBlock(BlockPos(5, 0, 5), Blocks.DIRT)
+        for (y in 1..4) helper.setBlock(BlockPos(5, y, 5), Blocks.OAK_LOG)
+        for (x in 4..6) for (z in 4..6) for (y in 4..5) if (!(x == 5 && z == 5 && y == 4)) helper.setBlock(BlockPos(x, y, z), Blocks.OAK_LEAVES)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop")
+        s.active = true
+        helper.succeedWhen {
+            if (!helper.getBlockState(BlockPos(5, 1, 5)).isAir && !helper.getBlockState(BlockPos(5, 1, 5)).`is`(Blocks.OAK_SAPLING)) fail("the trunk is still standing")
+            if (count(helper, s.pos, Items.OAK_LOG) < 4) fail("logs have not reached the chest yet")
+            cleanup(helper, s)
+        }
+    }
+
+    private fun tree(helper: GameTestHelper, logs: Int) {
+        helper.setBlock(BlockPos(5, 0, 5), Blocks.DIRT)
+        for (y in 1..logs) helper.setBlock(BlockPos(5, y, 5), Blocks.OAK_LOG)
+        for (x in 4..6) for (z in 4..6) for (y in logs..logs + 1) if (!(x == 5 && z == 5 && y == logs)) helper.setBlock(BlockPos(x, y, z), Blocks.OAK_LEAVES)
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun timberFellsTheWholeTreeInOneSwingAtLevel50(helper: GameTestHelper) {
+        setup(helper)
+        tree(helper, 5)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop", 50)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.OAK_LOG) < 5) fail("logs have not reached the chest yet")
+            if (s.done != 1L) fail("a level 50 Pokemon should fell all 5 logs in one swing, but it took ${s.done}")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun noTimberBelowLevel20(helper: GameTestHelper) {
+        setup(helper)
+        tree(helper, 5)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop", 12)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.OAK_LOG) < 5) fail("logs have not reached the chest yet")
+            if (s.done != 5L) fail("a level 12 Pokemon should need one swing per log, but 5 logs took ${s.done} swings")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun timberTakesFourLogsPerSwingAtLevel20(helper: GameTestHelper) {
+        setup(helper)
+        tree(helper, 6)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop", 20)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.OAK_LOG) < 6) fail("logs have not reached the chest yet")
+            if (s.done != 2L) fail("a level 20 Pokemon takes 4 logs per swing, so 6 logs should take 2 swings, not ${s.done}")
+            cleanup(helper, s)
+        }
+    }
+
+    private fun leavesLeft(helper: GameTestHelper, logs: Int): Int {
+        var n = 0
+        for (x in 4..6) for (z in 4..6) for (y in logs..logs + 1) if (helper.getBlockState(BlockPos(x, y, z)).`is`(Blocks.OAK_LEAVES)) n++
+        return n
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun leafSweepClearsTheCrownFromLevel10(helper: GameTestHelper) {
+        setup(helper)
+        tree(helper, 4)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop", 12)
+        s.active = true
+        helper.succeedWhen {
+            if (!helper.getBlockState(BlockPos(5, 1, 5)).isAir && !helper.getBlockState(BlockPos(5, 1, 5)).`is`(Blocks.OAK_SAPLING)) fail("the trunk is still standing")
+            if (leavesLeft(helper, 4) != 0) fail("Leaf Sweep should have removed every leaf, ${leavesLeft(helper, 4)} are left")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun noLeafSweepBelowLevel10(helper: GameTestHelper) {
+        setup(helper)
+        tree(helper, 4)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        worker(helper, s, "machop", 5)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.OAK_LOG) < 4) fail("logs have not reached the chest yet")
+            if (leavesLeft(helper, 4) == 0) fail("a level 5 Pokemon has no Leaf Sweep, so the leaves must still be there")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun veinMinerTakesFourOrePerSwingAtLevel15(helper: GameTestHelper) {
+        setup(helper)
+        for (x in 3..6) helper.setBlock(BlockPos(x, 1, 4), Blocks.COAL_ORE)
+        val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
+        s.cornerA = helper.absolutePos(BlockPos(3, 1, 4)); s.cornerB = helper.absolutePos(BlockPos(6, 1, 4))
+        worker(helper, s, "geodude", 15)
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..6) if (!helper.getBlockState(BlockPos(x, 1, 4)).isAir) fail("ore not mined yet")
+            if (count(helper, s.pos, Items.COAL) < 4) fail("coal has not reached the chest yet")
+            if (s.done != 1L) fail("a level 15 miner takes 4 connected ore per swing, but this took ${s.done} swings")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun miningClearsTheMarkedArea(helper: GameTestHelper) {
+        setup(helper)
+        for (x in 3..5) for (z in 3..5) for (y in 1..2) helper.setBlock(BlockPos(x, y, z), Blocks.DIRT)
+        val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
+        s.cornerA = helper.absolutePos(BlockPos(3, 1, 3)); s.cornerB = helper.absolutePos(BlockPos(5, 2, 5))
+        worker(helper, s, "geodude")
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..5) for (z in 3..5) for (y in 1..2) if (!helper.getBlockState(BlockPos(x, y, z)).isAir) fail("area not cleared")
+            if (count(helper, s.pos, Items.DIRT) < 18) fail("dirt has not reached the chest yet")
+            if (!helper.getBlockState(BlockPos(4, 0, 4)).`is`(Blocks.STONE)) fail("dug below the marked area")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun miningRespectsTheFilter(helper: GameTestHelper) {
+        setup(helper)
+        helper.setBlock(BlockPos(4, 1, 4), Blocks.DIRT)
+        helper.setBlock(BlockPos(5, 1, 4), Blocks.COBBLESTONE)
+        val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
+        s.cornerA = helper.absolutePos(BlockPos(4, 1, 4)); s.cornerB = helper.absolutePos(BlockPos(5, 1, 4))
+        s.filter.only = true; s.filter.entries.add("minecraft:dirt"); s.filter.changed()
+        worker(helper, s, "geodude")
+        s.active = true
+        helper.succeedWhen {
+            if (!helper.getBlockState(BlockPos(4, 1, 4)).isAir) fail("dirt should be mined")
+            if (count(helper, s.pos, Items.DIRT) < 1) fail("dirt not delivered yet")
+            if (!helper.getBlockState(BlockPos(5, 1, 4)).`is`(Blocks.COBBLESTONE)) fail("cobblestone is filtered out and must stay")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun buildingFollowsThePlan(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.BUILDING)
+        val blocks = ArrayList<Pair<BlockPos, net.minecraft.world.level.block.state.BlockState>>()
+        for (x in 3..5) for (z in 3..5) blocks.add(helper.absolutePos(BlockPos(x, 1, z)) to Blocks.OAK_PLANKS.defaultBlockState())
+        blocks.add(helper.absolutePos(BlockPos(4, 2, 4)) to Blocks.TORCH.defaultBlockState())
+        s.plan = Plan.ordered("test", blocks)
+        put(helper, s, ItemStack(Items.OAK_PLANKS, 16))
+        put(helper, s, ItemStack(Items.TORCH, 2))
+        worker(helper, s, "machop")
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..5) for (z in 3..5) if (!helper.getBlockState(BlockPos(x, 1, z)).`is`(Blocks.OAK_PLANKS)) fail("platform not finished")
+            if (!helper.getBlockState(BlockPos(4, 2, 4)).`is`(Blocks.TORCH)) fail("torch not placed")
+            if (s.active) fail("site should stop by itself when the build is done")
+            if (count(helper, s.pos, Items.OAK_PLANKS) != 7) fail("exactly 9 planks should have been used")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun smeltingWithFire(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.SMELTING)
+        put(helper, s, ItemStack(Items.RAW_IRON, 3))
+        worker(helper, s, "charmander")
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.IRON_INGOT) < 3) fail("ingots not delivered yet")
+            if (count(helper, s.pos, Items.RAW_IRON) != 0) fail("raw iron left over")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun sortingTopsUpMatchingChests(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.SORTING)
+        helper.setBlock(BlockPos(6, 1, 6), Blocks.CHEST)
+        val target = helper.absolutePos(BlockPos(6, 1, 6))
+        Inv.insert(Inv.storage(helper.level, target)!!, ItemStack(Items.COBBLESTONE, 1))
+        s.links.add(target)
+        put(helper, s, ItemStack(Items.COBBLESTONE, 8))
+        put(helper, s, ItemStack(Items.DIRT, 4))
+        worker(helper, s, "abra")
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, target, Items.COBBLESTONE) < 9) fail("cobblestone not sorted yet")
+            if (count(helper, target, Items.DIRT) != 0) fail("dirt has no matching chest and must stay")
+            if (count(helper, s.pos, Items.DIRT) != 4) fail("dirt must stay in the site chest")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun buildersTakeMaterialsFromExtraChests(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.BUILDING)
+        helper.setBlock(BlockPos(1, 1, 6), Blocks.CHEST)
+        val extra = helper.absolutePos(BlockPos(1, 1, 6))
+        s.links.add(extra)
+        // Every plank is in the extra chest; the job site chest itself is empty.
+        Inv.insert(Inv.storage(helper.level, extra)!!, ItemStack(Items.OAK_PLANKS, 8))
+        val blocks = ArrayList<Pair<BlockPos, net.minecraft.world.level.block.state.BlockState>>()
+        for (x in 3..5) blocks.add(helper.absolutePos(BlockPos(x, 1, 3)) to Blocks.OAK_PLANKS.defaultBlockState())
+        s.plan = Plan.ordered("test", blocks)
+        worker(helper, s, "machop")
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..5) if (!helper.getBlockState(BlockPos(x, 1, 3)).`is`(Blocks.OAK_PLANKS)) fail("row not built yet")
+            if (count(helper, extra, Items.OAK_PLANKS) != 5) fail("exactly 3 planks should have come out of the extra chest")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun aFullChestOverflowsIntoExtraChests(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
+        val main = Inv.storage(helper.level, s.pos)!!
+        repeat(27) { Inv.insert(main, ItemStack(Items.STONE, 64)) }
+        helper.setBlock(BlockPos(1, 1, 6), Blocks.CHEST)
+        val extra = helper.absolutePos(BlockPos(1, 1, 6))
+        s.links.add(extra)
+        helper.setBlock(BlockPos(4, 1, 4), Blocks.DIRT)
+        s.cornerA = helper.absolutePos(BlockPos(4, 1, 4)); s.cornerB = helper.absolutePos(BlockPos(4, 1, 4))
+        worker(helper, s, "geodude")
+        s.active = true
+        helper.succeedWhen {
+            if (!helper.getBlockState(BlockPos(4, 1, 4)).isAir) fail("dirt not mined yet")
+            if (count(helper, extra, Items.DIRT) != 1) fail("the dirt should land in the extra chest because the main chest is full")
+            if (count(helper, s.pos, Items.STONE) != 27 * 64) fail("the main chest must be untouched")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun farmingHarvestsAndReplants(helper: GameTestHelper) {
+        setup(helper)
+        for (x in 3..5) {
+            helper.setBlock(BlockPos(x, 0, 4), Blocks.FARMLAND)
+            helper.setBlock(BlockPos(x, 1, 4), (Blocks.WHEAT as net.minecraft.world.level.block.CropBlock).getStateForAge(7))
+        }
+        val s = site(helper, BlockPos(1, 1, 1), Job.FARMING)
+        worker(helper, s, "bulbasaur")
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.WHEAT) < 3) fail("wheat has not reached the chest yet")
+            for (x in 3..5) {
+                val st = helper.getBlockState(BlockPos(x, 1, 4))
+                if (!st.`is`(Blocks.WHEAT)) fail("the crop at $x was not replanted")
+                if ((Blocks.WHEAT as net.minecraft.world.level.block.CropBlock).isMaxAge(st)) fail("the crop at $x was not harvested")
+            }
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun haulingRespectsEachChestsOwnFilter(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        helper.setBlock(BlockPos(6, 1, 2), Blocks.CHEST); helper.setBlock(BlockPos(6, 1, 5), Blocks.CHEST)
+        val stone = helper.absolutePos(BlockPos(6, 1, 2)); val dirt = helper.absolutePos(BlockPos(6, 1, 5))
+        s.links.add(stone); s.links.add(dirt)
+        s.chest(stone).filter.apply { only = true; entries.add("minecraft:cobblestone"); changed() }
+        s.chest(dirt).filter.apply { only = true; entries.add("minecraft:dirt"); changed() }
+        put(helper, s, ItemStack(Items.DIRT, 6))
+        put(helper, s, ItemStack(Items.COBBLESTONE, 5))
+        worker(helper, s, "pidgey")
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, stone, Items.COBBLESTONE) != 5) fail("all cobblestone should be in the cobblestone chest")
+            if (count(helper, dirt, Items.DIRT) != 6) fail("all dirt should be in the dirt chest")
+            if (count(helper, stone, Items.DIRT) + count(helper, dirt, Items.COBBLESTONE) != 0) fail("something went into the wrong chest")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun demolitionTakesTheAreaApart(helper: GameTestHelper) {
+        setup(helper)
+        for (x in 3..5) for (y in 1..2) helper.setBlock(BlockPos(x, y, 4), Blocks.OAK_PLANKS)
+        val s = site(helper, BlockPos(1, 1, 1), Job.DEMOLITION)
+        s.cornerA = helper.absolutePos(BlockPos(3, 1, 4)); s.cornerB = helper.absolutePos(BlockPos(5, 2, 4))
+        worker(helper, s, "machop")
+        s.active = true
+        helper.succeedWhen {
+            for (x in 3..5) for (y in 1..2) if (!helper.getBlockState(BlockPos(x, y, 4)).isAir) fail("not all blocks are down yet")
+            if (!helper.getBlockState(BlockPos(4, 0, 4)).`is`(Blocks.STONE)) fail("dug below the marked area")
+            if (count(helper, s.pos, Items.OAK_PLANKS) < 1) fail("no planks came back, each should come back 70 percent of the time")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    fun sendingAWorkerHomeKeepsThePokemonSafe(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        val w = worker(helper, s, "bulbasaur")
+        val id = w.pokemonId
+        helper.runAfterDelay(10) { Workers.unassign(helper.level, s, w, null) }
+        helper.succeedWhen {
+            if (s.workers.isNotEmpty()) fail("worker still on the site")
+            val p = Cobblemon.storage.getPC(owner, helper.level.registryAccess())[id] ?: fail("THE POKEMON WAS LOST")
+            if (p.tetheringId != null) fail("Pokemon is still marked as working")
+            if (p.entity != null && p.entity!!.isAlive) fail("worker entity still in the world")
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun theWhistleRecipeExists(helper: GameTestHelper) {
+        val r = helper.level.recipeManager.byKey(dev.foremon.Foremon.id("whistle")).orElse(null) ?: fail("no recipe for the whistle")
+        if (!r.value().getResultItem(helper.level.registryAccess()).`is`(dev.foremon.Foremon.WHISTLE)) fail("the recipe does not make the whistle")
+        helper.succeed()
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    fun roamingBoxGrowsAfterAWorkAreaUpgrade(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        val w = worker(helper, s, "bulbasaur")
+        val before = Workers.entity(helper.level, w)!!.tethering!!.maxRoamPos
+        val state = Rules.state(helper.level.server, owner)
+        state.bought["work_area"] = (state.bought["work_area"] ?: 0) + 2
+        helper.runAfterDelay(5) { Workers.validate(helper.level, s) }
+        helper.succeedWhen {
+            val e = Workers.entity(helper.level, w) ?: fail("worker vanished")
+            val after = e.tethering?.maxRoamPos ?: fail("worker lost its job site")
+            if (after.x - before.x != 16) fail("the roaming box should be 16 blocks wider on each side, but grew by ${after.x - before.x}")
+            state.bought["work_area"] = (state.bought["work_area"] ?: 2) - 2
+            cleanup(helper, s)
+        }
+    }
+
+    // Upkeep changes a global setting, so it runs in its own batch, after the others.
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400, batch = "upkeep")
+    fun tiredWorkersEatBerriesThenSleepWhenThereAreNone(helper: GameTestHelper) {
+        setup(helper)
+        Config.d.upkeep = true
+        for (x in 3..6) for (z in 3..6) helper.setBlock(BlockPos(x, 1, z), Blocks.DIRT)
+        val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
+        s.cornerA = helper.absolutePos(BlockPos(3, 1, 3)); s.cornerB = helper.absolutePos(BlockPos(6, 1, 6))
+        val berry = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cobblemon", "oran_berry"))
+        put(helper, s, ItemStack(berry, 1))
+        val w = worker(helper, s, "geodude")
+        w.stamina = 1.0
+        s.active = true
+        var ate = false
+        helper.succeedWhen {
+            if (!ate) {
+                if (count(helper, s.pos, berry) != 0) fail("the worker has not eaten the berry yet")
+                ate = true
+                w.stamina = 0.0
+            }
+            if (w.restUntil <= helper.level.gameTime) fail("with no berries left it should fall asleep")
+            if (w.emote != dev.foremon.world.Emote.SLEEP && w.emote != dev.foremon.world.Emote.HUNGRY) fail("it should show the sleep or hungry icon, not ${w.emote}")
+            Config.d.upkeep = false
+            cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    fun breakingTheChestSendsWorkersHome(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        val w = worker(helper, s, "bulbasaur")
+        val id = w.pokemonId
+        s.active = true
+        helper.runAfterDelay(20) { helper.setBlock(BlockPos(1, 1, 1), Blocks.AIR) }
+        helper.succeedWhen {
+            if (SiteStore.of(helper.level).sites.containsKey(s.pos)) fail("site still exists")
+            val p = Cobblemon.storage.getPC(owner, helper.level.registryAccess())[id] ?: fail("THE POKEMON WAS LOST")
+            if (p.tetheringId != null) fail("Pokemon is still marked as working")
+            if (p.entity != null && p.entity!!.isAlive) fail("worker entity still in the world")
+        }
+    }
+}

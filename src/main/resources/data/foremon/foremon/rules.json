@@ -1,0 +1,226 @@
+{
+  "stat_base": 0.5,
+  "stat_primary_weight": 0.7,
+  "stat_secondary_weight": 0.3,
+  "stat_divisor": 200.0,
+  "stat_min": 0.5,
+  "stat_max": 2.0,
+  "type_min": 0.7,
+  "type_max": 1.6,
+  "second_type_share": 0.5,
+  "move_cap": 0.35,
+  "final_min": 0.25,
+  "final_max": 3.0,
+  "friendship_min": 0.9,
+  "friendship_span": 0.2,
+  "fed_bonus": 0.15,
+  "large_width": 1.5,
+  "large_height": 3.0,
+  "tiny_width": 0.5,
+  "tiny_height": 0.6,
+  "carry_base": 8.0,
+  "carry_per_hp": 0.3334,
+  "carry_min": 4,
+  "carry_max": 256,
+  "carry_large": 2.0,
+  "carry_tiny": 0.5,
+  "reach_large": 2,
+  "mining_tier_levels": [
+    1,
+    10,
+    25,
+    45
+  ],
+  "mining_tier_types": [
+    "rock",
+    "ground",
+    "steel"
+  ],
+  "star_thresholds": [
+    0.75,
+    1.0,
+    1.35,
+    1.8
+  ],
+  "unlocks": {
+    "lumber": [
+      {
+        "level": 10,
+        "id": "leaf_sweep",
+        "value": 1
+      },
+      {
+        "level": 20,
+        "id": "timber",
+        "value": 4
+      },
+      {
+        "level": 35,
+        "id": "timber",
+        "value": 12
+      },
+      {
+        "level": 50,
+        "id": "timber",
+        "value": 256
+      }
+    ],
+    "mining": [
+      {
+        "level": 15,
+        "id": "vein",
+        "value": 4
+      },
+      {
+        "level": 30,
+        "id": "vein",
+        "value": 10
+      },
+      {
+        "level": 45,
+        "id": "vein",
+        "value": 24
+      }
+    ],
+    "farming": [
+      {
+        "level": 15,
+        "id": "sweep",
+        "value": 1
+      },
+      {
+        "level": 35,
+        "id": "sweep",
+        "value": 2
+      }
+    ],
+    "smelting": [
+      {
+        "level": 20,
+        "id": "batch",
+        "value": 2
+      },
+      {
+        "level": 40,
+        "id": "batch",
+        "value": 4
+      }
+    ],
+    "hauling": [
+      {
+        "level": 20,
+        "id": "load",
+        "value": 1.5
+      },
+      {
+        "level": 40,
+        "id": "load",
+        "value": 2
+      }
+    ],
+    "sorting": [
+      {
+        "level": 20,
+        "id": "load",
+        "value": 1.5
+      },
+      {
+        "level": 40,
+        "id": "load",
+        "value": 2
+      }
+    ],
+    "building": [
+      {
+        "level": 25,
+        "id": "multi",
+        "value": 2
+      },
+      {
+        "level": 45,
+        "id": "multi",
+        "value": 3
+      }
+    ],
+    "demolition": [
+      {
+        "level": 25,
+        "id": "multi",
+        "value": 2
+      },
+      {
+        "level": 45,
+        "id": "multi",
+        "value": 4
+      }
+    ]
+  },
+  "capability_abilities": {
+    "levitate": "flight"
+  },
+  "capability_moves": {
+    "fly": "flight",
+    "rockclimb": "flight",
+    "dive": "underwater"
+  },
+  "capability_types": {
+    "water": "underwater",
+    "fire": "lava"
+  },
+  "natures": {
+    "lonely": "strong",
+    "brave": "strong",
+    "adamant": "strong",
+    "naughty": "strong",
+    "bold": "sturdy",
+    "relaxed": "sturdy",
+    "impish": "sturdy",
+    "lax": "sturdy",
+    "timid": "eager",
+    "hasty": "eager",
+    "jolly": "eager",
+    "naive": "eager",
+    "modest": "clever",
+    "mild": "clever",
+    "quiet": "clever",
+    "rash": "clever",
+    "calm": "careful",
+    "gentle": "careful",
+    "sassy": "careful",
+    "careful": "careful"
+  },
+  "styles": {
+    "balanced": {},
+    "eager": {
+      "speed": 1.1,
+      "stamina_drain": 1.25
+    },
+    "strong": {
+      "carry": 1.25
+    },
+    "sturdy": {
+      "stamina": 1.25
+    },
+    "clever": {
+      "xp": 1.15
+    },
+    "careful": {
+      "bonus_yield": 0.05
+    }
+  },
+  "perks": {
+    "pickup": "vacuum",
+    "harvest": "double_harvest",
+    "superluck": "fortune",
+    "serenegrace": "fortune",
+    "compoundeyes": "fortune"
+  },
+  "move_perks": {
+    "cut": "tree_feller",
+    "dig": "vein_miner"
+  },
+  "quirks": {
+    "truant": "truant",
+    "slowstart": "slow_start"
+  }
+}

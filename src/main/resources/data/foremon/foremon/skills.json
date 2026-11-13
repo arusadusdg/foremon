@@ -1,0 +1,517 @@
+{
+  "modes": {
+    "relaxed": {
+      "cost_multiplier": 0.5,
+      "xp_multiplier": 1.5,
+      "start": {
+        "work_area": 1,
+        "crew_size": 1,
+        "job_sites": 1,
+        "linked_chests": 1,
+        "filter_slots": 1,
+        "vertical_range": 1
+      }
+    },
+    "normal": {
+      "cost_multiplier": 1.0,
+      "xp_multiplier": 1.0,
+      "start": {}
+    },
+    "hardcore": {
+      "cost_multiplier": 2.0,
+      "xp_multiplier": 0.75,
+      "start": {}
+    }
+  },
+  "nodes": [
+    {
+      "id": "work_area",
+      "branch": "foreman",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 8,
+      "per_level": 8,
+      "icon": "minecraft:spyglass",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "vertical_range",
+      "branch": "foreman",
+      "max": 6,
+      "base_cost": 30,
+      "cost_growth": 1.6,
+      "base": 8,
+      "per_level": 8,
+      "icon": "minecraft:ladder",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "id": "crew_size",
+      "branch": "foreman",
+      "max": 5,
+      "base_cost": 60,
+      "cost_growth": 1.9,
+      "base": 1,
+      "per_level": 1,
+      "icon": "minecraft:player_head",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "id": "job_sites",
+      "branch": "foreman",
+      "max": 5,
+      "base_cost": 80,
+      "cost_growth": 1.9,
+      "base": 1,
+      "per_level": 1,
+      "icon": "minecraft:chest",
+      "x": 1,
+      "y": 1
+    },
+    {
+      "id": "linked_chests",
+      "branch": "foreman",
+      "max": 5,
+      "base_cost": 30,
+      "cost_growth": 1.6,
+      "base": 2,
+      "per_level": 2,
+      "icon": "minecraft:chest_minecart",
+      "x": 0,
+      "y": 2
+    },
+    {
+      "id": "filter_slots",
+      "branch": "foreman",
+      "max": 5,
+      "base_cost": 25,
+      "cost_growth": 1.6,
+      "base": 3,
+      "per_level": 3,
+      "icon": "minecraft:item_frame",
+      "x": 1,
+      "y": 2
+    },
+    {
+      "id": "remote_control",
+      "branch": "foreman",
+      "max": 1,
+      "base_cost": 200,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:recovery_compass",
+      "x": 0,
+      "y": 3,
+      "requires": {
+        "job_sites": 1
+      }
+    },
+    {
+      "id": "night_shift",
+      "branch": "foreman",
+      "max": 1,
+      "base_cost": 400,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:clock",
+      "x": 1,
+      "y": 3,
+      "requires": {
+        "crew_size": 2
+      }
+    },
+    {
+      "id": "work_ethic",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 50,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.05,
+      "icon": "minecraft:sugar",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "speed_lumber",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:iron_axe",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "id": "speed_mining",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:iron_pickaxe",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "id": "speed_logistics",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:chest_minecart",
+      "x": 3,
+      "y": 0
+    },
+    {
+      "id": "speed_farming",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:iron_hoe",
+      "x": 4,
+      "y": 0
+    },
+    {
+      "id": "speed_smelting",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:blast_furnace",
+      "x": 5,
+      "y": 0
+    },
+    {
+      "id": "speed_building",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:bricks",
+      "x": 6,
+      "y": 0
+    },
+    {
+      "id": "speed_demolition",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:tnt",
+      "x": 7,
+      "y": 0
+    },
+    {
+      "id": "tree_feller",
+      "branch": "labour",
+      "max": 1,
+      "base_cost": 250,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:oak_log",
+      "x": 1,
+      "y": 1,
+      "requires": {
+        "speed_lumber": 2
+      }
+    },
+    {
+      "id": "deep_digging",
+      "branch": "labour",
+      "max": 2,
+      "base_cost": 200,
+      "cost_growth": 2.5,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:deepslate_diamond_ore",
+      "x": 2,
+      "y": 1,
+      "requires": {
+        "speed_mining": 1
+      }
+    },
+    {
+      "id": "vein_miner",
+      "branch": "labour",
+      "max": 1,
+      "base_cost": 250,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:raw_iron",
+      "x": 2,
+      "y": 2,
+      "requires": {
+        "speed_mining": 2
+      }
+    },
+    {
+      "id": "prospector",
+      "branch": "labour",
+      "max": 4,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.05,
+      "icon": "minecraft:emerald",
+      "x": 2,
+      "y": 3,
+      "requires": {
+        "speed_mining": 1
+      }
+    },
+    {
+      "id": "bountiful_harvest",
+      "branch": "labour",
+      "max": 4,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.08,
+      "icon": "minecraft:wheat",
+      "x": 4,
+      "y": 1,
+      "requires": {
+        "speed_farming": 1
+      }
+    },
+    {
+      "id": "twin_furnace",
+      "branch": "labour",
+      "max": 1,
+      "base_cost": 250,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:furnace",
+      "x": 5,
+      "y": 1,
+      "requires": {
+        "speed_smelting": 2
+      }
+    },
+    {
+      "id": "master_builder",
+      "branch": "labour",
+      "max": 1,
+      "base_cost": 300,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:scaffolding",
+      "x": 6,
+      "y": 1,
+      "requires": {
+        "speed_building": 3
+      }
+    },
+    {
+      "id": "clean_salvage",
+      "branch": "labour",
+      "max": 3,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0.7,
+      "per_level": 0.1,
+      "icon": "minecraft:brush",
+      "x": 7,
+      "y": 1,
+      "requires": {
+        "speed_demolition": 1
+      }
+    },
+    {
+      "id": "endurance",
+      "branch": "care",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 20,
+      "icon": "minecraft:golden_carrot",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "power_nap",
+      "branch": "care",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.12,
+      "icon": "minecraft:red_bed",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "id": "hearty_meals",
+      "branch": "care",
+      "max": 4,
+      "base_cost": 50,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.25,
+      "icon": "minecraft:sweet_berries",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "id": "fast_learner",
+      "branch": "care",
+      "max": 5,
+      "base_cost": 60,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.2,
+      "icon": "minecraft:book",
+      "x": 3,
+      "y": 0
+    },
+    {
+      "id": "second_wind",
+      "branch": "care",
+      "max": 4,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.05,
+      "icon": "minecraft:feather",
+      "x": 0,
+      "y": 1,
+      "requires": {
+        "endurance": 2
+      }
+    },
+    {
+      "id": "bonding",
+      "branch": "care",
+      "max": 3,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.5,
+      "icon": "minecraft:poppy",
+      "x": 1,
+      "y": 1
+    },
+    {
+      "id": "training",
+      "branch": "care",
+      "max": 3,
+      "base_cost": 100,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.5,
+      "icon": "minecraft:experience_bottle",
+      "x": 2,
+      "y": 1
+    },
+    {
+      "id": "safety_gear",
+      "branch": "care",
+      "max": 1,
+      "base_cost": 200,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:turtle_helmet",
+      "x": 3,
+      "y": 1
+    },
+    {
+      "id": "pack_mule",
+      "branch": "logistics",
+      "max": 4,
+      "base_cost": 50,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.25,
+      "icon": "minecraft:bundle",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fleet_feet",
+      "branch": "logistics",
+      "max": 4,
+      "base_cost": 50,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.08,
+      "icon": "minecraft:rabbit_foot",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "id": "long_haul",
+      "branch": "logistics",
+      "max": 4,
+      "base_cost": 50,
+      "cost_growth": 1.6,
+      "base": 24,
+      "per_level": 16,
+      "icon": "minecraft:rail",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "id": "item_magnet",
+      "branch": "logistics",
+      "max": 4,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 2,
+      "per_level": 1.5,
+      "icon": "minecraft:lodestone",
+      "x": 3,
+      "y": 0
+    },
+    {
+      "id": "tidy_up",
+      "branch": "logistics",
+      "max": 1,
+      "base_cost": 150,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:barrel",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "id": "quick_recall",
+      "branch": "logistics",
+      "max": 3,
+      "base_cost": 60,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.2,
+      "icon": "minecraft:ender_pearl",
+      "x": 1,
+      "y": 1
+    }
+  ]
+}
