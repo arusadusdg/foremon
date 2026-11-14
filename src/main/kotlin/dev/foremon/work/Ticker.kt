@@ -44,7 +44,9 @@ class Ctx(
     private var pool: Storage<ItemVariant>? = null
 
     /** Where this site keeps things: its chest plus any extra chests added to it. Resolved at most once per tick. */
-    val storage: Storage<ItemVariant> get() = pool ?: Inv.pool(level, s, main, usableLinks).also { pool = it }
+    // Sorting and Hauling move items between their chests themselves, so their storage is just the site's own chest.
+    // Hauling's chests can be far away: checking them here would load their chunks every tick.
+    val storage: Storage<ItemVariant> get() = pool ?: (if (s.job == Job.SORTING || s.job == Job.HAULING) main else Inv.pool(level, s, main, usableLinks)).also { pool = it }
 
     private var usable: List<BlockPos>? = null
 

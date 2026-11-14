@@ -622,21 +622,43 @@ object Logistics : JobLogic() {
  * A route goes from any chest to any other: the depot, an extra chest, another job site's chest. It carries what the
  * chest it delivers to allows (that chest's filter). Every hauler finishes loads on its own timer, so each one added
  * moves that much more, and a longer route takes longer per load.
+ *
+ * A route may reach a chest whose chunk is not loaded (a job site far away, up to the Supply Lines range): the hauler
+ * starts the load without looking, and only when it is done is that chunk loaded for a moment to move the items. A far
+ * route that turns out empty rests a minute, so far chunks are not loaded for nothing.
  */
 object Courier : JobLogic() {
     // ponytail: one base trip plus one more per 6 blocks; fine-tune here if routes feel too fast or too slow.
     private const val TRIP_BASE = 3.0
     private const val BLOCKS_PER_TRIP = 6.0
+    private const val FAR_REST_TICKS = 1200L
+
+    /**
+     * Keeps a far route's chunk loaded (not ticking: nothing there runs) for a minute after a load, so a busy route does
+     * not read it from disk again every trip. Route ends are chests, so their chunks always exist: nothing is generated.
+     */
+    private val FAR_TICKET = net.minecraft.server.level.TicketType.create<net.minecraft.world.level.ChunkPos>(
+        "foremon_route", Comparator.comparingLong { it.toLong() }, FAR_REST_TICKS.toInt())
 
     private class Route(val from: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
                         val to: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
                         val test: (ItemStack) -> Boolean)
 
-    /** Route number [i], or null if a chest is gone, not the owner's to use, or in a chunk that is not loaded (never load one to look). */
-    private fun route(c: Ctx, i: Int): Route? {
+    private fun loaded(c: Ctx, i: Int) = c.s.routes.getOrNull(i)?.let { (a, b) -> c.level.isLoaded(a) && c.level.isLoaded(b) } == true
+
+    /**
+     * Route number [i], or null if a chest is gone or not the owner's to use. A chest in an unloaded chunk counts only
+     * when [load] is set: then its chunk is loaded to get at it.
+     */
+    private fun route(c: Ctx, i: Int, load: Boolean = false): Route? {
         val (from, to) = c.s.routes.getOrNull(i) ?: return null
         for (p in listOf(from, to)) {
-            if (!c.level.isLoaded(p)) return null
+            if (!c.level.isLoaded(p)) {
+                if (!load) return null
+                val cp = net.minecraft.world.level.ChunkPos(p)
+                c.level.chunkSource.addRegionTicket(FAR_TICKET, cp, 0, cp)
+                c.level.getChunk(cp.x, cp.z)
+            }
             if (p != c.s.pos && !Protection.ownerMayUse(c.level, c.s, p)) return null
         }
         val a = Inv.storage(c.level, from) ?: return null
@@ -647,19 +669,22 @@ object Courier : JobLogic() {
 
     private fun ready(r: Route) = Inv.contains(r.from, r.test)
 
+    /** Worth starting a load on route [i]: a loaded one with something to move, or a far one that is not resting. */
+    private fun worth(c: Ctx, i: Int): Boolean =
+        if (loaded(c, i)) route(c, i)?.let(::ready) == true
+        else (c.s.routeIdle[i] ?: 0L) <= c.now
+
     override fun plan(c: Ctx): Step? {
         val routes = c.s.routes
         if (routes.isEmpty()) { c.status("foremon.status.make_routes"); return null }
-        var unloaded = false
         for (k in routes.indices) {
             val i = (c.s.routeCursor + k) % routes.size
-            if (!c.level.isLoaded(routes[i].first) || !c.level.isLoaded(routes[i].second)) { unloaded = true; continue }
-            if (route(c, i)?.let(::ready) == true) {
+            if (worth(c, i)) {
                 c.s.routeCursor = (i + 1) % routes.size
                 return Step(c.s.pos, Step.Kind.WORK, i)
             }
         }
-        c.status(if (unloaded) "foremon.status.route_unloaded" else "foremon.status.routes_idle")
+        c.status("foremon.status.routes_idle")
         return null
     }
 
@@ -669,14 +694,20 @@ object Courier : JobLogic() {
         return TRIP_BASE + kotlin.math.sqrt(from.distSqr(to)) / BLOCKS_PER_TRIP
     }
 
-    override fun stillValid(c: Ctx, step: Step) = route(c, step.data)?.let(::ready) == true
+    override fun stillValid(c: Ctx, step: Step) = worth(c, step.data)
 
     override fun act(c: Ctx, step: Step): Boolean {
-        val r = route(c, step.data) ?: return false
-        // Heavy Load (level perk) and Pack Mule make every load bigger.
-        val load = (c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt()
-        val stack = Inv.extract(r.from, load, r.test)
-        if (stack.isEmpty) return false
+        val far = !loaded(c, step.data)
+        val r = route(c, step.data, load = true)
+        val stack = if (r == null) ItemStack.EMPTY else {
+            // Heavy Load (level perk) and Pack Mule make every load bigger.
+            val load = (c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt()
+            Inv.extract(r.from, load, r.test)
+        }
+        if (r == null || stack.isEmpty) {
+            if (far) c.s.routeIdle[step.data] = c.now + FAR_REST_TICKS
+            return false
+        }
         val moved = stack.count
         // What did not fit goes back where it came from; anything even that will not take, the hauler holds for the depot.
         val rest = Inv.insert(r.to, stack)

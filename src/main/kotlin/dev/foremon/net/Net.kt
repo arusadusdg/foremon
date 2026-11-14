@@ -150,7 +150,8 @@ object Net {
                 for (s in sites.values) {
                     if (s.pos.distSqr(at) > 96.0 * 96.0) continue
                     pos.add(s.pos.asLong()); kinds.add((s.job.ordinal or if (s.active) Markers.ACTIVE else 0).toByte()); balls.add(ballIndex(s.ball).toByte())
-                    for (l in s.links) { pos.add(l.asLong()); kinds.add(Markers.EXTRA.toByte()); balls.add(ballIndex(s.chest(l).ball).toByte()) }
+                    // A route end can be another job site's chest; that chest keeps its own site marker.
+                    for (l in s.links) { if (sites.containsKey(l)) continue; pos.add(l.asLong()); kinds.add(Markers.EXTRA.toByte()); balls.add(ballIndex(s.chest(l).ball).toByte()) }
                 }
             }
             val hash = 31 * (31 * (31 * pos.hashCode() + kinds.hashCode()) + balls.hashCode()) + level.dimension().location().hashCode()

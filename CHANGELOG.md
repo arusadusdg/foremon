@@ -11,9 +11,12 @@
 - Each route carries what the chest it delivers to allows (that chest's filter). The Routes tab lists them, with
   the distance, a filter button and a button to remove one.
 - Longer routes take longer per load, and each extra hauler works its own loads, so more haulers move more.
-- Route chests may be four times as far from the depot as Long Haul allows (`haulRouteReach` in the config). A
-  route whose chest is in an unloaded chunk waits instead of loading it. With Remote Control, routes and haulers can
-  be set up without going back to the depot.
+- New skill, **Supply Lines** (Logistics branch, up to level 5): how far route chests may be from the depot. 500
+  blocks to start, 5000 at the top. Far routes are not capped any other way: they just take longer per load.
+- A route chest in an unloaded chunk still gets worked: the chunk is loaded for the load and kept loaded (not
+  ticking) for a minute, so a Lumber site 600 blocks away keeps feeding the depot while you are at home.
+- With Remote Control, the Routes tab has an **Add route** button: pick two of your job sites (or the depot) from the
+  list and the route is made without going there.
 
 ### Lumber
 - New skill, **Bone Meal** (Labour branch, up to level 3, after one level of Chopping): Lumber crews use bone meal

@@ -165,7 +165,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     /** Removes a route, and any extra chest no other route uses any more. */
     fun removeRoute(index: Int) {
         val r = routes.getOrNull(index) ?: return
-        routes.removeAt(index)
+        routes.removeAt(index); routeIdle.clear()
         for (p in listOf(r.first, r.second)) if (p != pos && routes.none { it.first == p || it.second == p }) { links.remove(p); chests.remove(p) }
     }
     /** Build job: uploaded placement, see Plan. */
@@ -183,6 +183,8 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     var notifiedAt = 0L
     /** Hauling: the route to try first next time, so one busy route cannot starve the others. */
     var routeCursor = 0
+    /** Hauling: far routes that came up empty, by index, and when to try them again (so far chunks are not loaded for nothing). */
+    val routeIdle = HashMap<Int, Long>()
 
     fun save(reg: HolderLookup.Provider) = CompoundTag().also { t ->
         t.putLong("pos", pos.asLong()); t.putUUID("owner", owner); t.putString("ownerName", ownerName)

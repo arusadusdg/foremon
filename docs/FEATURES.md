@@ -35,7 +35,7 @@ How to read the boxes:
 - [x] **Lumber**: chop natural trees in range, replant saplings
 - [x] **Mining**: dig an area marked by sneak-clicking two corners with the whistle
 - [x] **Sorting**: move items to linked chests that already hold that item
-- [x] **Hauling**: routes from any chest to any chest (two sneak-clicks), worked on a timer from the depot (no walking), faster with more haulers
+- [x] **Hauling**: routes from any chest to any chest (two sneak-clicks), worked on a timer from the depot (no walking), faster with more haulers; Supply Lines range 500 to 5000 blocks, far chunks loaded per load, Remote Control Add route picker
 - [~] **Farming**: harvest and replant crops and nether wart
 - [~] **Berry and apricorn harvesting**: Cobblemon's own crops (part of the Farming job)
 - [x] **Smelting**: Pokemon with fire act as the furnace, no fuel

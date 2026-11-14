@@ -409,6 +409,24 @@ class ForemonGameTest : FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun routeEndsCanBeActiveJobSites(helper: GameTestHelper) {
+        setup(helper)
+        // Sneak-clicking a working Lumber site's chest and then a Smelting site's chest makes a route between them.
+        val lumber = site(helper, BlockPos(6, 1, 1), Job.LUMBER).also { it.active = true }
+        val smelter = site(helper, BlockPos(6, 1, 6), Job.SMELTING).also { it.active = true }
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        val player = helper.makeMockServerPlayerInLevel()
+        val first = dev.foremon.net.Actions.routeClick(player, helper.level, depot, lumber.pos, lumber.owner)
+        if (first[0] != "foremon.msg.route_from") fail("a job site's chest should start a route, got ${first[0]}")
+        val second = dev.foremon.net.Actions.routeClick(player, helper.level, depot, smelter.pos, smelter.owner)
+        if (second[0] != "foremon.msg.route_added") fail("a job site's chest should end a route, got ${second[0]}")
+        if (depot.routes != listOf(lumber.pos to smelter.pos)) fail("expected a route from Lumber to Smelting, got ${depot.routes}")
+        if (!lumber.active || !smelter.active || lumber.job != Job.LUMBER) fail("the job sites should keep working as they were")
+        cleanup(helper, depot); cleanup(helper, lumber); cleanup(helper, smelter)
+        helper.succeed()
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     fun twoSneakClicksMakeARoute(helper: GameTestHelper) {
         setup(helper)
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
@@ -427,6 +445,55 @@ class ForemonGameTest : FabricGameTest {
         depot.removeRoute(0)
         if (depot.routes.isNotEmpty() || depot.links.isNotEmpty()) fail("removing the only route should also drop its chests")
         SiteStore.of(helper.level).sites.remove(depot.pos)
+        helper.succeed()
+    }
+
+    /** A job site of the test owner at an absolute position, with its chest. */
+    private fun farSite(helper: GameTestHelper, pos: BlockPos, job: Job): Site {
+        helper.level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState())
+        val s = Site(pos, owner, "tester"); s.job = job
+        SiteStore.of(helper.level).sites[pos] = s
+        return s
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 6000, batch = "far_route")
+    fun farRouteBringsWoodFromALumberSite600BlocksAway(helper: GameTestHelper) {
+        setup(helper)
+        withSkill(helper, "remote_control", 1); withSkill(helper, "supply_lines", 1)
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        val lumber = farSite(helper, depot.pos.offset(600, 0, 0), Job.LUMBER)
+        put(helper, lumber, ItemStack(Items.OAK_LOG, 12))
+        val msg = dev.foremon.net.Actions.remoteRoute(helper.level, depot, lumber.pos, depot.pos)
+        if (msg[0] != "foremon.msg.route_added") fail("the remote route was refused: ${msg[0]}")
+        worker(helper, depot, "pidgey")
+        depot.active = true
+        helper.succeedWhen {
+            if (count(helper, depot.pos, Items.OAK_LOG) != 12) fail("the logs have not all reached the depot yet")
+            cleanup(helper, depot); cleanup(helper, lumber)
+            withSkill(helper, "remote_control", 0); withSkill(helper, "supply_lines", 0)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, batch = "route_rules")
+    fun remoteRoutesNeedRemoteControlAndRange(helper: GameTestHelper) {
+        setup(helper)
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        val near = farSite(helper, depot.pos.offset(300, 0, 0), Job.LUMBER)
+        val far = farSite(helper, depot.pos.offset(0, 0, 2000), Job.MINING)
+        withSkill(helper, "remote_control", 0); withSkill(helper, "supply_lines", 0)
+        val a = dev.foremon.net.Actions.remoteRoute(helper.level, depot, near.pos, depot.pos)
+        if (a[0] != "foremon.fail.needs_remote") fail("without Remote Control it should be refused, got ${a[0]}")
+        withSkill(helper, "remote_control", 1)
+        val b = dev.foremon.net.Actions.remoteRoute(helper.level, depot, far.pos, depot.pos)
+        if (b[0] != "foremon.fail.route_far" || b[1] != "500") fail("2000 blocks is past the 500 block start, got $b")
+        val c = dev.foremon.net.Actions.remoteRoute(helper.level, depot, near.pos, depot.pos)
+        if (c[0] != "foremon.msg.route_added") fail("300 blocks with Remote Control should work, got ${c[0]}")
+        withSkill(helper, "supply_lines", 5)
+        if (Rules.skill(helper.level.server, owner, "supply_lines") != 5000.0) fail("Supply Lines should top out at 5000 blocks")
+        val d = dev.foremon.net.Actions.remoteRoute(helper.level, depot, far.pos, depot.pos)
+        if (d[0] != "foremon.msg.route_added") fail("2000 blocks with Supply Lines 5 should work, got ${d[0]}")
+        for (st in listOf(depot, near, far)) SiteStore.of(helper.level).sites.remove(st.pos)
+        withSkill(helper, "remote_control", 0); withSkill(helper, "supply_lines", 0)
         helper.succeed()
     }
 

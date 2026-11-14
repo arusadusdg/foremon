@@ -37,7 +37,7 @@ object Inv {
      * never be written to. Sorting and Hauling keep the extra chests as destinations instead.
      */
     fun pool(level: ServerLevel, s: Site, main: Storage<ItemVariant>, links: List<BlockPos>): Storage<ItemVariant> {
-        if (links.isEmpty() || s.job == dev.foremon.rules.Job.SORTING || s.job == dev.foremon.rules.Job.HAULING) return main
+        if (links.isEmpty()) return main
         val parts = ArrayList<Storage<ItemVariant>>(links.size + 1)
         parts.add(main)
         for (l in links) storage(level, l)?.let { st ->

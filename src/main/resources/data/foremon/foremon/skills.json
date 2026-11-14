@@ -493,6 +493,18 @@
       "y": 0
     },
     {
+      "id": "supply_lines",
+      "branch": "logistics",
+      "max": 5,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 500,
+      "per_level": 900,
+      "icon": "minecraft:filled_map",
+      "x": 2,
+      "y": 1
+    },
+    {
       "id": "item_magnet",
       "branch": "logistics",
       "max": 4,

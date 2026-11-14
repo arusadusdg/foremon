@@ -20,6 +20,9 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
     private var tab = 0
     private var confirmRemove = 0L
     private var ticks = 0
+    /** Routes tab: picking two job sites for a new route (Remote Control); the first one picked, once picked. */
+    private var picking = false
+    private var pickFrom: Long? = null
 
     /** While the site runs, ask for fresh numbers every half second so the load and stamina bars move. */
     override fun tick() {
@@ -304,9 +307,13 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
 
     /** Hauling: every route, from one chest to another, what it carries and how far it goes. */
     private fun routesTab(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int) {
+        if (picking) { sitePicker(g, x, y0, w, h); return }
         val routes = data.getList("routes", Tag.TAG_COMPOUND.toInt())
         val all = chests()
-        text(g, tr("foremon.gui.routes", routes.size, data.getInt("maxLinks")), x, y0, Pal.MUTED)
+        text(g, Component.empty().append(tr("foremon.gui.routes", routes.size, data.getInt("maxLinks"))).append("  ")
+            .append(tr("foremon.gui.route_reach", data.getInt("routeReach"))), x, y0, Pal.MUTED)
+        if (data.getBoolean("remote")) button(g, x + w - 70, y0 - 3, 70, 12, tr("foremon.gui.route_add"), accent = true,
+            tooltip = lines(tr("foremon.gui.route_add_tip"))) { picking = true; pickFrom = null }
         fun chestAt(pos: Long) = all.indexOfFirst { it.getLong("pos") == pos }
         fun nameOf(i: Int): Component = if (i <= 0) tr("foremon.gui.chest_main") else tr("foremon.gui.chest_extra", i)
         val rowH = 22
@@ -334,7 +341,39 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         }
         if (routes.size > rows) text(g, tr("foremon.gui.more", routes.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)
         if (routes.isEmpty()) clip(g, muted(tr("foremon.status.make_routes")), x, y0 + 14, w, Pal.MUTED)
-        clip(g, muted(tr("foremon.gui.routes.how")), x, y0 + h - 10, w, Pal.MUTED)
+        clip(g, muted(tr(if (data.getBoolean("remote")) "foremon.gui.routes.how" else "foremon.gui.route_needs_remote")), x, y0 + h - 10, w, Pal.MUTED)
+    }
+
+    /** Remote Control: pick where a new route takes from, then where it delivers to, from this depot and the owner's job sites. */
+    private fun sitePicker(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int) {
+        text(g, tr(if (pickFrom == null) "foremon.gui.route_pick_from" else "foremon.gui.route_pick_to"), x, y0, Pal.STAR)
+        button(g, x + w - 50, y0 - 3, 50, 12, tr("foremon.gui.cancel")) { picking = false; pickFrom = null }
+        val reach = data.getInt("routeReach")
+        val sites = data.getList("sites", Tag.TAG_COMPOUND.toInt()).let { l -> (0 until l.size).map { l.getCompound(it) } }.sortedBy { it.getInt("dist") }
+        // This depot first, then every other job site, nearest first.
+        val options = listOf(Triple(pos, Job.HAULING, -1)) + sites.map { Triple(it.getLong("pos"), Job.of(it.getString("job")) ?: Job.LUMBER, it.getInt("dist")) }
+        val rowH = 18
+        val rows = ((h - 22) / rowH).coerceAtLeast(1)
+        for ((i, o) in options.take(rows).withIndex()) {
+            val (p, j, dist) = o
+            val ry = y0 + 11 + i * rowH
+            val tooFar = dist > reach
+            val picked = p == pickFrom
+            val hot = !tooFar && !picked && hover(x, ry, w, rowH - 2)
+            pokePanel(g, x, ry, w, rowH - 2, hot)
+            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), x + 2, ry)
+            val name = if (dist < 0) tr("foremon.gui.route_this_depot") else tr("foremon.gui.route_site", tr("foremon.job.${j.key}"))
+            val bp = BlockPos.of(p)
+            val where = if (dist < 0) "" else "  ${dist}m  (${bp.x} ${bp.y} ${bp.z})"
+            clip(g, Component.empty().append(name).append(where), x + 21, ry + 4, w - 24, if (tooFar || picked) Pal.MUTED else 0xFFFFFFFF.toInt())
+            if (tooFar && hover(x, ry, w, rowH - 2)) tip = lines(tr("foremon.fail.route_far", reach))
+            if (!tooFar && !picked) click(x, ry, w, rowH - 2) {
+                val from = pickFrom
+                if (from == null) pickFrom = p
+                else { op("route_add") { t -> t.putLong("from", from); t.putLong("to", p) }; picking = false; pickFrom = null }
+            }
+        }
+        if (options.size > rows) text(g, tr("foremon.gui.more", options.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)
     }
 
     /** A PC box, drawn like the storage system in the games: pick any Pokemon in it to put it to work. */

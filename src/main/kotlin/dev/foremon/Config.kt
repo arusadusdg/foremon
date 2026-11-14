@@ -46,8 +46,6 @@ class ConfigData {
         var masteryLevels = listOf(40, 160, 480, 1200)
         var masterySpeedPerLevel = 0.06
         var maxMiningVolume = 32 * 32 * 64
-        /** Hauling crews do not walk, so their chests may be this many times further away than Long Haul allows. */
-        var haulRouteReach = 4.0
         var maxPlanBlocks = 200_000
         /** Dimensions where no job site may work, e.g. "minecraft:the_end". */
         var blockedDimensions = listOf<String>()

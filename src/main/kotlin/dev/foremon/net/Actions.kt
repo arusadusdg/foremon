@@ -49,20 +49,40 @@ object Actions {
         if (chest != s.pos) {
             if (chestSiteOwner != null && chestSiteOwner != s.owner) return listOf("foremon.fail.not_owner")
             if (!dev.foremon.work.Protection.playerMayUse(level, player, chest)) return listOf("foremon.fail.chest_protected")
-            val reach = Rules.skill(player.server, s.owner, "long_haul") * Config.a.haulRouteReach
-            if (chest.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.link_far", reach.toInt().toString())
+            val reach = Rules.skill(player.server, s.owner, "supply_lines")
+            if (chest.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.route_far", reach.toInt().toString())
         }
         val pending = routeStart.remove(player.uuid)
         val start = if (pending?.first == s.pos) pending.second else null
         if (start == null) { routeStart[player.uuid] = s.pos to chest; return listOf("foremon.msg.route_from", "${chest.x} ${chest.y} ${chest.z}") }
-        if (start == chest) return listOf("foremon.msg.route_cancelled")
-        if (s.routes.any { it.first == start && it.second == chest }) return listOf("foremon.fail.route_exists")
-        val max = Rules.skill(player.server, s.owner, "linked_chests").toInt()
+        return addRoute(player.server, s, start, chest)
+    }
+
+    /** Adds a route once both ends are known to be fine. Returns the message for the player, like [routeClick]. */
+    private fun addRoute(server: net.minecraft.server.MinecraftServer, s: Site, from: BlockPos, to: BlockPos): List<String> {
+        if (from == to) return listOf("foremon.msg.route_cancelled")
+        if (s.routes.any { it.first == from && it.second == to }) return listOf("foremon.fail.route_exists")
+        val max = Rules.skill(server, s.owner, "linked_chests").toInt()
         if (s.routes.size >= max) return listOf("foremon.fail.route_limit", max.toString())
         // Both ends become chests of the site, so they get a ball marker and a filter (the site's own chest already has both).
-        for (p in listOf(start, chest)) if (p != s.pos && p !in s.links) { s.links.add(p); s.chest(p) }
-        s.routes.add(start to chest)
+        for (p in listOf(from, to)) if (p != s.pos && p !in s.links) { s.links.add(p); s.chest(p) }
+        s.routes.add(from to to)
         return listOf("foremon.msg.route_added", s.routes.size.toString(), max.toString())
+    }
+
+    /**
+     * Remote Control: a route between two of the owner's job sites picked from the Routes tab, without going there.
+     * Both ends must be job sites of the same owner in this dimension (or the depot itself), within Supply Lines range.
+     */
+    fun remoteRoute(level: ServerLevel, s: Site, from: BlockPos, to: BlockPos): List<String> {
+        if (!Rules.has(level.server, s.owner, "remote_control")) return listOf("foremon.fail.needs_remote")
+        val reach = Rules.skill(level.server, s.owner, "supply_lines")
+        val sites = SiteStore.of(level).sites
+        for (p in listOf(from, to)) {
+            if (p != s.pos && sites[p]?.owner != s.owner) return listOf("foremon.fail.not_owner")
+            if (p.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.route_far", reach.toInt().toString())
+        }
+        return addRoute(level.server, s, from, to)
     }
 
     /** A bad packet or a bug in one action must never crash the server. */
@@ -148,6 +168,11 @@ object Actions {
                 if (chestPos == s.pos) s.ball = ball else if (chestPos in s.links) s.chest(chestPos).ball = ball
             }
             "route_remove" -> { s.removeRoute(t.getInt("index")); reset(s) }
+            "route_add" -> {
+                val msg = remoteRoute(level, s, BlockPos.of(t.getLong("from")), BlockPos.of(t.getLong("to")))
+                Foremon.tell(player, msg[0], *msg.drop(1).toTypedArray())
+                reset(s)
+            }
             "link_remove" -> s.removeLink(BlockPos.of(t.getLong("chest")))
             "clear_area" -> { s.cornerA = null; s.cornerB = null; reset(s) }
             "clear_links" -> { s.links.clear(); s.chests.clear() }
@@ -231,6 +256,15 @@ object Actions {
             })
             add(s.pos, s.ball, s.filter, true)
             for (link in s.links) { val info = s.chest(link); add(link, info.ball, info.filter, false) }
+        })
+        // Hauling: the owner's other job sites here, to pick route ends from with Remote Control.
+        t.putBoolean("remote", Rules.has(server, s.owner, "remote_control"))
+        t.putInt("routeReach", Rules.skill(server, s.owner, "supply_lines").toInt())
+        if (s.job == Job.HAULING) t.put("sites", ListTag().also { l ->
+            for (o in SiteStore.of(level).sites.values) if (o.owner == s.owner && o.pos != s.pos) l.add(CompoundTag().also { c ->
+                c.putLong("pos", o.pos.asLong()); c.putString("job", o.job.key)
+                c.putInt("dist", kotlin.math.sqrt(o.pos.distSqr(s.pos)).toInt())
+            })
         })
         // Hauling routes, from one of the chests above to another.
         t.put("routes", ListTag().also { l ->
