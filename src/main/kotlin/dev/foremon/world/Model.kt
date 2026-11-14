@@ -160,7 +160,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     val routes = ArrayList<Pair<BlockPos, BlockPos>>()
 
     /** Removes an extra chest, and every route that used it. */
-    fun removeLink(pos: BlockPos): Boolean { chests.remove(pos); routes.removeIf { it.first == pos || it.second == pos }; return links.remove(pos) }
+    fun removeLink(pos: BlockPos): Boolean { chests.remove(pos); if (routes.removeIf { it.first == pos || it.second == pos }) routeIdle.clear(); return links.remove(pos) }
 
     /** Removes a route, and any extra chest no other route uses any more. */
     fun removeRoute(index: Int) {
