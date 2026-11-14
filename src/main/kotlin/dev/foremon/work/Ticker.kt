@@ -177,12 +177,15 @@ object Ticker {
 
     private fun idle(c: Ctx) {
         val w = c.w
+        land(c)
         if (w.step != null || w.emote != Emote.NONE) { w.step = null; w.progress = 0; emote(c, Emote.NONE) }
     }
 
     private fun tickWorker(c: Ctx, logic: JobLogic) {
         val w = c.w; val e = c.e; val now = c.now
         if (e.isBattling) return
+        // A trip that ended any other way than by finishing (or a server restart mid-flight) still lands the hauler.
+        if (w.path != null && (w.step?.kind != Step.Kind.WORK || w.progress == 0) || w.path == null && (e.isNoGravity || e.isInvisible)) land(c)
         val score = c.profile.score(c.s.job)
         if (!score.able) { emote(c, Emote.NEED); c.status("foremon.status.cannot_do", c.p.species.name); return }
 
@@ -237,7 +240,9 @@ object Ticker {
         }
 
         // ---- get there
-        if (!near(c, step.pos, step.kind == Step.Kind.WORK && logic.anyHeight)) { travel(c, step); return }
+        // A hauler on its flight is away from the depot on purpose.
+        val onTrip = step.kind == Step.Kind.WORK && w.progress > 0 && w.path != null
+        if (!onTrip && !near(c, step.pos, step.kind == Step.Kind.WORK && logic.anyHeight)) { travel(c, step); return }
         w.stuck = 0; w.failures = 0
 
         when (step.kind) {
@@ -262,7 +267,13 @@ object Ticker {
 
     private fun work(c: Ctx, logic: JobLogic, step: Step, mult: Double) {
         val w = c.w; val e = c.e
-        hold(e, step.pos)
+        val path = w.path
+        when {
+            path == null -> hold(e, step.pos)
+            path.isEmpty() -> { hold(e, null); if (!e.isInvisible) e.isInvisible = true }
+            // The world stopped running somewhere ahead (the owner walked off): the rest of the trip is out of sight.
+            !fly(c, path, (w.progress + 1.0) / w.need) -> { land(c); w.path = emptyList(); e.isInvisible = true }
+        }
         // Below a fifth of its stamina a worker looks tired, so the owner can top up berries before it falls asleep.
         val tired = Config.d.upkeep && w.stamina < Workers.maxStamina(c.level, c.s, w) * 0.2
         emote(c, if (tired) Emote.TIRED else Emote.WORKING)
@@ -270,14 +281,16 @@ object Ticker {
         if (w.progress == 0) {
             if (!logic.stillValid(c, step)) { debug(c) { "target ${step.pos.toShortString()} is no longer valid" }; w.step = null; return }
             w.need = Suitability.actionTicks(Rules.set.job(c.s.job), mult, extra(c), logic.hardness(c, step))
+            w.path = logic.trip(c, step); w.loadStart = c.now
         }
-        if (w.progress % 20 == 0) animate(c)
+        if (w.progress % 20 == 0 && path == null) animate(c)
         w.progress++
         if (logic.cracks(step)) c.level.destroyBlockProgress(e.id, step.pos, min(9, w.progress * 10 / w.need))
         if (w.progress < w.need) return
 
         w.progress = 0
         if (logic.cracks(step)) c.level.destroyBlockProgress(e.id, step.pos, -1)
+        if (w.path != null) land(c)
         val done = logic.act(c, step)
         debug(c) { "acted at ${step.pos.toShortString()}, worked=$done" }
         if (!logic.repeats(c, step)) w.step = null
@@ -487,8 +500,56 @@ object Ticker {
     }
 
     /** Shows what the worker carries on its model, using the item slot Cobblemon already renders. */
+    /**
+     * Moves a hauler along its flight path to fraction [f] of the trip, with a little arc on every leg so it clears
+     * fences and hedges. False if the world is not running there, so it cannot fly on.
+     */
+    private fun fly(c: Ctx, path: List<net.minecraft.world.phys.Vec3>, f: Double): Boolean {
+        val e = c.e
+        val at = along(path, f.coerceIn(0.0, 1.0))
+        if (!c.level.isPositionEntityTicking(BlockPos.containing(at))) return false
+        hold(e, null)
+        e.isNoGravity = true; e.noPhysics = true; e.fallDistance = 0f
+        val next = along(path, (f + 1.0 / c.w.need).coerceAtMost(1.0))
+        e.setPos(at.x, at.y, at.z)
+        e.deltaMovement = next.subtract(at)
+        val dx = next.x - at.x; val dz = next.z - at.z
+        if (dx * dx + dz * dz > 1e-4) {
+            val yaw = (kotlin.math.atan2(dz, dx) * (180.0 / Math.PI)).toFloat() - 90f
+            e.yRot = yaw; e.yBodyRot = yaw; e.yHeadRot = yaw
+        }
+        return true
+    }
+
+    /** The point at fraction [f] of the way along [path], legs arcing up by up to 6 blocks. */
+    private fun along(path: List<net.minecraft.world.phys.Vec3>, f: Double): net.minecraft.world.phys.Vec3 {
+        val legs = (0 until path.size - 1).map { path[it].distanceTo(path[it + 1]) }
+        var left = f * legs.sum()
+        for ((k, len) in legs.withIndex()) {
+            if (left <= len || k == legs.lastIndex) {
+                val t = if (len < 1e-6) 1.0 else (left / len).coerceIn(0.0, 1.0)
+                return path[k].lerp(path[k + 1], t).add(0.0, kotlin.math.sin(Math.PI * t) * min(6.0, len / 3), 0.0)
+            }
+            left -= len
+        }
+        return path.last()
+    }
+
+    /** Ends a trip: back on its feet, visible, empty-handed. */
+    private fun land(c: Ctx) {
+        val w = c.w; val e = c.e
+        w.path = null; w.hauling = ItemStack.EMPTY
+        if (e.isNoGravity) {
+            e.isNoGravity = false
+            // Stopped mid-air (the site was paused, say): back to the depot rather than a fall.
+            if (e.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(c.s.pos)) > 16.0) Workers.home(c.level, c.s, e)
+        }
+        e.noPhysics = false
+        if (e.isInvisible) e.isInvisible = false
+    }
+
     private fun show(c: Ctx) {
-        val top = c.w.supplies.lastOrNull() ?: c.w.carried.lastOrNull() ?: ItemStack.EMPTY
+        val top = c.w.supplies.lastOrNull() ?: c.w.carried.lastOrNull() ?: c.w.hauling
         if (ItemStack.isSameItem(top, c.w.shown) || top.isEmpty && c.w.shown.isEmpty) return
         c.w.shown = top.copyWithCount(1)
         c.e.setItemInHand(InteractionHand.MAIN_HAND, c.w.shown.copy())

@@ -23,6 +23,7 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
     /** Routes tab: picking two job sites for a new route (Remote Control); the first one picked, once picked. */
     private var picking = false
     private var pickFrom: Long? = null
+    private var crewFor = -1
 
     /** While the site runs, ask for fresh numbers every half second so the load and stamina bars move. */
     override fun tick() {
@@ -305,14 +306,16 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         clip(g, muted(tr("foremon.gui.links.how")), x, y0 + h - 10, w, Pal.MUTED)
     }
 
-    /** Hauling: every route, from one chest to another, what it carries and how far it goes. */
+    /** Hauling: every route, from one chest to another, what it carries, how far it goes and who works it. */
     private fun routesTab(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int) {
         if (picking) { sitePicker(g, x, y0, w, h); return }
         val routes = data.getList("routes", Tag.TAG_COMPOUND.toInt())
+        if (crewFor >= routes.size) crewFor = -1
+        if (crewFor >= 0) { crewPicker(g, x, y0, w, h, routes); return }
         val all = chests()
         text(g, Component.empty().append(tr("foremon.gui.routes", routes.size, data.getInt("maxLinks"))).append("  ")
             .append(tr("foremon.gui.route_reach", data.getInt("routeReach"))), x, y0, Pal.MUTED)
-        if (data.getBoolean("remote")) button(g, x + w - 70, y0 - 3, 70, 12, tr("foremon.gui.route_add"), accent = true,
+        button(g, x + w - 70, y0 - 3, 70, 12, tr("foremon.gui.route_add"), accent = true,
             tooltip = lines(tr("foremon.gui.route_add_tip"))) { picking = true; pickFrom = null }
         fun chestAt(pos: Long) = all.indexOfFirst { it.getLong("pos") == pos }
         fun nameOf(i: Int): Component = if (i <= 0) tr("foremon.gui.chest_main") else tr("foremon.gui.chest_extra", i)
@@ -326,51 +329,88 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
             all.getOrNull(a)?.let { icon(g, MonIcons.ball(it.getString("ball")), x + 3, ry + 2) }
             g.drawString(font, "\u2192", x + 22, ry + 6, 0xFFFFFFFF.toInt(), true)
             all.getOrNull(b)?.let { icon(g, MonIcons.ball(it.getString("ball")), x + 31, ry + 2) }
-            val bw = 36
-            val textW = w - 51 - bw - 24
+            val bw = 36; val cw = 34
+            val textW = w - 51 - bw - cw - 26
             clip(g, Component.empty().append(nameOf(a)).append(" \u2192 ").append(nameOf(b)), x + 51, ry + 2, textW, 0xFFFFFFFF.toInt())
             // What it carries is the filter of the chest it delivers to.
             val dest = all.getOrNull(b)
             val entries = dest?.getList("entries", Tag.TAG_STRING.toInt())?.size ?: 0
             val carries = if (dest == null || entries == 0) tr("foremon.gui.chest_takes_all")
                 else tr(if (dest.getBoolean("only")) "foremon.gui.chest_only_n" else "foremon.gui.chest_except_n", entries)
-            val line = carries.string + "  ${r.getInt("dist")}m" + (if (r.getBoolean("loaded")) "" else " \u00b7 " + tr("foremon.gui.route_unloaded").string)
+            val crew = r.getList("crew", Tag.TAG_STRING.toInt()).size
+            val line = carries.string + "  ${r.getInt("dist")}m" + (if (r.getBoolean("loaded")) "" else " \u00b7 " + tr("foremon.gui.route_unloaded").string) +
+                (if (crew > 0) " \u00b7 " + tr("foremon.gui.route_crew_n", crew).string else "")
             clip(g, Component.literal(line), x + 51, ry + 11, textW, Pal.POKE_TEXT_SOFT)
+            button(g, x + w - bw - cw - 22, ry + 2, cw, 16, tr("foremon.gui.route_crew"), tooltip = lines(tr("foremon.gui.route_crew_tip"))) { crewFor = i }
             button(g, x + w - bw - 20, ry + 2, bw, 16, tr("foremon.gui.tab_filter_short"), tooltip = lines(tr("foremon.gui.route_filter_tip"))) { filterChest = r.getLong("to"); tab = 1 }
             button(g, x + w - 18, ry + 2, 16, 16, Component.literal("x"), tooltip = lines(tr("foremon.gui.route_remove"))) { op("route_remove") { t -> t.putInt("index", i) } }
         }
         if (routes.size > rows) text(g, tr("foremon.gui.more", routes.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)
         if (routes.isEmpty()) clip(g, muted(tr("foremon.status.make_routes")), x, y0 + 14, w, Pal.MUTED)
-        clip(g, muted(tr(if (data.getBoolean("remote")) "foremon.gui.routes.how" else "foremon.gui.route_needs_remote")), x, y0 + h - 10, w, Pal.MUTED)
+        clip(g, muted(tr("foremon.gui.routes.how")), x, y0 + h - 10, w, Pal.MUTED)
     }
 
-    /** Remote Control: pick where a new route takes from, then where it delivers to, from this depot and the owner's job sites. */
+    /** Dispatch: pick which haulers work only route [crewFor]. Anyone not picked for any route works them all in turn. */
+    private fun crewPicker(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int, routes: net.minecraft.nbt.ListTag) {
+        text(g, tr("foremon.gui.crew_title", crewFor + 1), x, y0, Pal.STAR)
+        button(g, x + w - 50, y0 - 3, 50, 12, tr("foremon.gui.done")) { crewFor = -1 }
+        // Which route each hauler is on, if any.
+        val on = HashMap<String, Int>()
+        for (k in 0 until routes.size) routes.getCompound(k).getList("crew", Tag.TAG_STRING.toInt()).forEach { on[it.asString] = k }
+        val workers = data.getList("workers", Tag.TAG_COMPOUND.toInt()).let { l -> (0 until l.size).map { l.getCompound(it) } }
+        val rowH = 18
+        val rows = ((h - 24) / rowH).coerceAtLeast(1)
+        for ((i, m) in workers.take(rows).withIndex()) {
+            val ry = y0 + 11 + i * rowH
+            val id = m.getUUID("id")
+            val route = on[id.toString()]
+            val hot = hover(x, ry, w, rowH - 2)
+            pokePanel(g, x, ry, w, rowH - 2, hot || route == crewFor)
+            icon(g, MonIcons.of(m), x + 2, ry)
+            val where = when (route) { crewFor -> tr("foremon.gui.crew_here"); null -> tr("foremon.gui.crew_any"); else -> tr("foremon.gui.crew_other", route + 1) }
+            clip(g, Component.literal(m.getString("name") + "  ").append(where), x + 21, ry + 4, w - 24, if (route == crewFor) Pal.STAR else 0xFFFFFFFF.toInt())
+            click(x, ry, w, rowH - 2) { op("route_crew") { t -> t.putInt("index", crewFor); t.putUUID("mon", id) } }
+        }
+        if (workers.isEmpty()) clip(g, muted(tr("foremon.gui.crew_none")), x, y0 + 14, w, Pal.MUTED)
+        clip(g, muted(tr("foremon.gui.crew_how", data.getInt("dispatch"))), x, y0 + h - 10, w, Pal.MUTED)
+    }
+
+    /** Pick where a new route takes from, then where it delivers to: this depot, its chests, or (Remote Control) any job site. */
     private fun sitePicker(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int) {
         text(g, tr(if (pickFrom == null) "foremon.gui.route_pick_from" else "foremon.gui.route_pick_to"), x, y0, Pal.STAR)
         button(g, x + w - 50, y0 - 3, 50, 12, tr("foremon.gui.cancel")) { picking = false; pickFrom = null }
         val reach = data.getInt("routeReach")
+        val remote = data.getBoolean("remote")
+        class Opt(val p: Long, val icon: ItemStack, val name: Component, val dist: Int, val locked: Boolean)
         val sites = data.getList("sites", Tag.TAG_COMPOUND.toInt()).let { l -> (0 until l.size).map { l.getCompound(it) } }.sortedBy { it.getInt("dist") }
-        // This depot first, then every other job site, nearest first.
-        val options = listOf(Triple(pos, Job.HAULING, -1)) + sites.map { Triple(it.getLong("pos"), Job.of(it.getString("job")) ?: Job.LUMBER, it.getInt("dist")) }
+        val sitePos = sites.map { it.getLong("pos") }.toSet()
+        val options = ArrayList<Opt>()
+        options += Opt(pos, ItemStack(JOB_ICONS[Job.HAULING] ?: Items.PAPER), tr("foremon.gui.route_this_depot"), -1, false)
+        for ((k, c) in chests().withIndex()) if (k > 0 && c.getLong("pos") !in sitePos)
+            options += Opt(c.getLong("pos"), MonIcons.ball(c.getString("ball")), tr("foremon.gui.chest_extra", k), c.getInt("dist"), false)
+        for (st in sites) options += Opt(st.getLong("pos"), ItemStack(JOB_ICONS[Job.of(st.getString("job")) ?: Job.LUMBER] ?: Items.PAPER),
+            tr("foremon.gui.route_site", tr("foremon.job.${st.getString("job")}")), st.getInt("dist"), !remote)
         val rowH = 18
         val rows = ((h - 22) / rowH).coerceAtLeast(1)
         for ((i, o) in options.take(rows).withIndex()) {
-            val (p, j, dist) = o
             val ry = y0 + 11 + i * rowH
-            val tooFar = dist > reach
-            val picked = p == pickFrom
-            val hot = !tooFar && !picked && hover(x, ry, w, rowH - 2)
+            val tooFar = o.dist > reach
+            val picked = o.p == pickFrom
+            val off = tooFar || o.locked || picked
+            val hot = !off && hover(x, ry, w, rowH - 2)
             pokePanel(g, x, ry, w, rowH - 2, hot)
-            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), x + 2, ry)
-            val name = if (dist < 0) tr("foremon.gui.route_this_depot") else tr("foremon.gui.route_site", tr("foremon.job.${j.key}"))
-            val bp = BlockPos.of(p)
-            val where = if (dist < 0) "" else "  ${dist}m  (${bp.x} ${bp.y} ${bp.z})"
-            clip(g, Component.empty().append(name).append(where), x + 21, ry + 4, w - 24, if (tooFar || picked) Pal.MUTED else 0xFFFFFFFF.toInt())
-            if (tooFar && hover(x, ry, w, rowH - 2)) tip = lines(tr("foremon.fail.route_far", reach))
-            if (!tooFar && !picked) click(x, ry, w, rowH - 2) {
+            icon(g, o.icon, x + 2, ry)
+            val bp = BlockPos.of(o.p)
+            val where = if (o.dist < 0) "" else "  ${o.dist}m  (${bp.x} ${bp.y} ${bp.z})"
+            clip(g, Component.empty().append(o.name).append(where), x + 21, ry + 4, w - 24, if (off) Pal.MUTED else 0xFFFFFFFF.toInt())
+            if (hover(x, ry, w, rowH - 2)) when {
+                o.locked -> tip = lines(tr("foremon.gui.route_needs_remote"))
+                tooFar -> tip = lines(tr("foremon.fail.route_far", reach))
+            }
+            if (!off) click(x, ry, w, rowH - 2) {
                 val from = pickFrom
-                if (from == null) pickFrom = p
-                else { op("route_add") { t -> t.putLong("from", from); t.putLong("to", p) }; picking = false; pickFrom = null }
+                if (from == null) pickFrom = o.p
+                else { op("route_add") { t -> t.putLong("from", from); t.putLong("to", o.p) }; picking = false; pickFrom = null }
             }
         }
         if (options.size > rows) text(g, tr("foremon.gui.more", options.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)

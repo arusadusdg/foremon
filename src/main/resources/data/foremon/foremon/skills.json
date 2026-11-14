@@ -505,6 +505,18 @@
       "y": 1
     },
     {
+      "id": "dispatch",
+      "branch": "logistics",
+      "max": 5,
+      "base_cost": 60,
+      "cost_growth": 1.6,
+      "base": 0,
+      "per_level": 1,
+      "icon": "minecraft:compass",
+      "x": 3,
+      "y": 1
+    },
+    {
       "id": "item_magnet",
       "branch": "logistics",
       "max": 4,

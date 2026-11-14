@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0
+
+### Hauling
+- Haulers fly their routes for real when the world is running all the way along them: depot, the chest they take
+  from, the chest they deliver to and back, carrying the load in their paws.
+- On a far route (a chunk on the way is not running) a hauler is out on the road: it leaves the depot instead of
+  standing at the chest, and shows on the board above the depot instead.
+- The depot board floats above the Hauling chest: every hauler with its icon, a load bar, what it is carrying, and
+  the total moved.
+- New skill, **Dispatch** (Logistics branch, up to level 5): send different haulers to different places. Each level
+  lets one more route have a crew of its own; press **Crew** on a route to pick its haulers. Haulers without a route
+  work every route.
+- **Add route** works without Remote Control now: pick from this depot and its chests; other job sites still need
+  Remote Control.
+
 ## 1.1.0
 
 ### Hauling routes

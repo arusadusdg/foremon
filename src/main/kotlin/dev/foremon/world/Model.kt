@@ -133,6 +133,11 @@ class Worker(val pokemonId: UUID) {
     var emote = Emote.NONE
     var shown: ItemStack = ItemStack.EMPTY
     var slowStartUntil = 0L
+    /** Hauling: the trip of the current load. Null: none. Empty: off on a far road, out of sight. Else the flight path. */
+    var path: List<net.minecraft.world.phys.Vec3>? = null
+    /** Hauling: what the current load looks like (shown in its paws and on the depot board), and when it started. */
+    var hauling: ItemStack = ItemStack.EMPTY
+    var loadStart = 0L
 
     fun count(list: List<ItemStack>) = list.sumOf { it.count }
 }
@@ -160,12 +165,16 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     val routes = ArrayList<Pair<BlockPos, BlockPos>>()
 
     /** Removes an extra chest, and every route that used it. */
-    fun removeLink(pos: BlockPos): Boolean { chests.remove(pos); if (routes.removeIf { it.first == pos || it.second == pos }) routeIdle.clear(); return links.remove(pos) }
+    fun removeLink(pos: BlockPos): Boolean {
+        chests.remove(pos)
+        if (routes.removeIf { it.first == pos || it.second == pos }) { routeIdle.clear(); crews.values.removeIf { it.first == pos || it.second == pos } }
+        return links.remove(pos)
+    }
 
     /** Removes a route, and any extra chest no other route uses any more. */
     fun removeRoute(index: Int) {
         val r = routes.getOrNull(index) ?: return
-        routes.removeAt(index); routeIdle.clear()
+        routes.removeAt(index); routeIdle.clear(); crews.values.removeIf { it == r }
         for (p in listOf(r.first, r.second)) if (p != pos && routes.none { it.first == p || it.second == p }) { links.remove(p); chests.remove(p) }
     }
     /** Build job: uploaded placement, see Plan. */
@@ -185,10 +194,14 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     var routeCursor = 0
     /** Hauling: far routes that came up empty, by index, and when to try them again (so far chunks are not loaded for nothing). */
     val routeIdle = HashMap<Int, Long>()
+    /** Hauling with Dispatch: haulers (by Pokemon) that only work one route. The rest work every route in turn. */
+    val crews = HashMap<UUID, Pair<BlockPos, BlockPos>>()
+    /** Hauling: items moved so far, for the depot board. */
+    var hauled = 0L
 
     fun save(reg: HolderLookup.Provider) = CompoundTag().also { t ->
         t.putLong("pos", pos.asLong()); t.putUUID("owner", owner); t.putString("ownerName", ownerName)
-        t.putString("job", job.key); t.putBoolean("active", active); t.putLong("done", done)
+        t.putString("job", job.key); t.putBoolean("active", active); t.putLong("done", done); t.putLong("hauled", hauled)
         cornerA?.let { t.putLong("a", it.asLong()) }; cornerB?.let { t.putLong("b", it.asLong()) }
         t.putLongArray("links", links.map { it.asLong() })
         t.putLongArray("routes", routes.flatMap { listOf(it.first.asLong(), it.second.asLong()) })
@@ -206,6 +219,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                 w.entityId?.let { c.putUUID("entity", it) }
                 c.putDouble("stamina", w.stamina); c.putLong("restUntil", w.restUntil); c.putInt("actions", w.actions)
                 c.putBoolean("fromPc", w.fromPc)
+                crews[w.pokemonId]?.let { (a, b) -> c.putLong("routeFrom", a.asLong()); c.putLong("routeTo", b.asLong()) }
                 c.put("carried", stacks(w.carried, reg)); c.put("supplies", stacks(w.supplies, reg))
             })
         })
@@ -221,7 +235,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         fun load(t: CompoundTag, reg: HolderLookup.Provider) =
             Site(BlockPos.of(t.getLong("pos")), t.getUUID("owner"), t.getString("ownerName")).also { s ->
                 s.job = Job.of(t.getString("job")) ?: Job.LUMBER
-                s.active = t.getBoolean("active"); s.done = t.getLong("done")
+                s.active = t.getBoolean("active"); s.done = t.getLong("done"); s.hauled = t.getLong("hauled")
                 if (t.contains("a")) s.cornerA = BlockPos.of(t.getLong("a"))
                 if (t.contains("b")) s.cornerB = BlockPos.of(t.getLong("b"))
                 t.getLongArray("links").forEach { s.links.add(BlockPos.of(it)) }
@@ -242,6 +256,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                     if (c.hasUUID("entity")) w.entityId = c.getUUID("entity")
                     w.stamina = c.getDouble("stamina"); w.restUntil = c.getLong("restUntil"); w.actions = c.getInt("actions")
                     w.fromPc = c.getBoolean("fromPc")
+                    if (c.contains("routeTo")) s.crews[w.pokemonId] = BlockPos.of(c.getLong("routeFrom")) to BlockPos.of(c.getLong("routeTo"))
                     stacks(c.getList("carried", Tag.TAG_COMPOUND.toInt()), reg, w.carried)
                     stacks(c.getList("supplies", Tag.TAG_COMPOUND.toInt()), reg, w.supplies)
                     s.workers.add(w)

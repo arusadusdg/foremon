@@ -22,7 +22,7 @@ smelt, sort your storage and build your Litematica schematics, block by block, f
   builds it from the bottom up.
 - **Your base, your way.** Mark every chest with a Poke Ball, from Poke Ball to Master Ball, give each its
   own filter, and pick workers straight from your PC boxes.
-- **Something to work toward.** A 40-upgrade skill tree: start with one chunk and one worker, end with a
+- **Something to work toward.** A 41-upgrade skill tree: start with one chunk and one worker, end with a
   whole crew across many sites.
 
 ## Jobs

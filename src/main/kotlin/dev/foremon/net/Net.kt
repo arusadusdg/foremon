@@ -129,7 +129,58 @@ object Net {
 
     private val lastMarkers = HashMap<java.util.UUID, Int>()
 
-    fun forgetMarkers(player: java.util.UUID) { lastMarkers.remove(player) }
+    fun forgetMarkers(player: java.util.UUID) { lastMarkers.remove(player); lastHaul.remove(player) }
+
+    /** Per player: the dimension and the depot boards it was last sent (by depot position, a hash of what it saw). */
+    private val lastHaul = HashMap<java.util.UUID, Pair<String, HashMap<Long, Int>>>()
+
+    /**
+     * Twice a second each player near a running Hauling depot is sent its board (every hauler, what it carries and when
+     * its load started and ends, plus the total moved), only when that changed. The client fills the bars in by itself.
+     */
+    fun syncHaul(level: ServerLevel) {
+        if (level.gameTime % 10 != 0L) return
+        val players = level.players()
+        if (players.isEmpty()) return
+        val dim = level.dimension().location().toString()
+        val depots = SiteStore.of(level).sites.values.filter { it.job == dev.foremon.rules.Job.HAULING && it.active && it.workers.isNotEmpty() }
+        // Each board is built once per pass, however many players stand near it.
+        val built = HashMap<Long, Pair<CompoundTag, Int>>()
+        for (p in players) {
+            if (!canReceive(p)) continue
+            val sent = lastHaul[p.uuid]?.takeIf { it.first == dim }?.second ?: HashMap<Long, Int>().also { lastHaul[p.uuid] = dim to it }
+            val seen = HashSet<Long>()
+            for (s in depots) {
+                if (s.pos.distSqr(p.blockPosition()) > 64.0 * 64.0) continue
+                val key = s.pos.asLong(); seen.add(key)
+                val (tag, h) = built.getOrPut(key) { board(s).let { it to it.hashCode() } }
+                if (sent.put(key, h) != h) view(p, "haul", tag)
+            }
+            val it = sent.keys.iterator()
+            while (it.hasNext()) {
+                val k = it.next()
+                if (k !in seen) { it.remove(); view(p, "haul", CompoundTag().also { t -> t.putLong("pos", k); t.putBoolean("gone", true) }) }
+            }
+        }
+    }
+
+    private fun board(s: dev.foremon.world.Site) = CompoundTag().also { t ->
+        t.putLong("pos", s.pos.asLong()); t.putLong("total", s.hauled)
+        t.put("workers", net.minecraft.nbt.ListTag().also { l ->
+            for (w in s.workers) {
+                val p = w.pokemon ?: continue
+                l.add(CompoundTag().also { c ->
+                    c.putString("species", p.species.resourceIdentifier.toString())
+                    c.put("aspects", net.minecraft.nbt.ListTag().also { a -> p.aspects.forEach { a.add(net.minecraft.nbt.StringTag.valueOf(it)) } })
+                    val path = w.path
+                    if (path != null && w.step?.kind == dev.foremon.world.Step.Kind.WORK) {
+                        c.putLong("start", w.loadStart); c.putInt("need", w.need); c.putBoolean("away", path.isEmpty())
+                        if (!w.hauling.isEmpty) { c.putString("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(w.hauling.item).toString()); c.putInt("count", w.hauling.count) }
+                    }
+                })
+            }
+        })
+    }
 
     /**
      * Every two seconds each player is told which chests near them are job sites or extra chests,

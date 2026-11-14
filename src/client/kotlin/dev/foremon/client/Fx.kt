@@ -22,6 +22,10 @@ import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.core.BlockPos
+import kotlin.math.min
+import net.minecraft.network.chat.Component
+import net.minecraft.nbt.Tag
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.state.properties.ChestType
@@ -144,6 +148,7 @@ object Emotes {
             val entry = it.next()
             val e = level.getEntity(entry.intKey)
             if (e == null) { it.remove(); continue }
+            if (e.isInvisible) continue
             val stack = ICONS[Emote.entries.getOrNull(entry.intValue)] ?: continue
             if (e.distanceToSqr(camPos) > 40.0 * 40.0) continue
             val x = Mth.lerp(partial.toDouble(), e.xo, e.x) - camPos.x
@@ -227,5 +232,80 @@ object ChestMarkers {
                 pose.popPose()
             }
         }
+    }
+}
+
+/** Hauling depots: a board above the chest with every hauler, its load and how far along it is, and the total moved. */
+object HaulBoards {
+    private val boards = HashMap<Long, CompoundTag>()
+    private val icons = HashMap<Long, List<ItemStack>>()
+    private var seenLevel: Any? = null
+    private const val S = 0.02f
+    private const val ROW = 12f
+    private const val MAX_ROWS = 8
+
+    fun set(t: CompoundTag) {
+        val k = t.getLong("pos")
+        if (t.getBoolean("gone")) { boards.remove(k); icons.remove(k); return }
+        boards[k] = t
+        val rows = t.getList("workers", Tag.TAG_COMPOUND.toInt())
+        icons[k] = (0 until min(rows.size, MAX_ROWS)).map { MonIcons.of(rows.getCompound(it)) }
+    }
+    fun clear() { boards.clear(); icons.clear() }
+
+    fun render(ctx: WorldRenderContext) {
+        val mc = Minecraft.getInstance()
+        val level = mc.level ?: return
+        // A new world or dimension: boards from the old one do not belong here.
+        if (level !== seenLevel) { seenLevel = level; clear(); return }
+        if (boards.isEmpty()) return
+        val pose = ctx.matrixStack() ?: return
+        val buffers = ctx.consumers() ?: return
+        val cam = ctx.camera(); val cp = cam.position
+        val now = level.gameTime + ctx.tickCounter().getGameTimeDeltaPartialTick(false)
+        val font = mc.font
+        for ((key, t) in boards) {
+            val pos = BlockPos.of(key)
+            if (pos.distToCenterSqr(cp) > 32.0 * 32.0) continue
+            val rows = t.getList("workers", Tag.TAG_COMPOUND.toInt())
+            val shown = min(rows.size, MAX_ROWS)
+            val mons = icons[key] ?: continue
+            pose.pushPose()
+            pose.translate(pos.x + 0.5 - cp.x, pos.y + 2.3 + (shown + 1) * ROW * S - cp.y, pos.z + 0.5 - cp.z)
+            pose.mulPose(cam.rotation())
+            for (i in 0 until shown) {
+                val r = rows.getCompound(i)
+                val y = i * ROW
+                pose.pushPose()
+                pose.translate(-54 * S, -(y + 6) * S, 0f)
+                pose.mulPose(Axis.YP.rotationDegrees(180f))
+                pose.scale(0.4f, 0.4f, 0.4f)
+                mc.itemRenderer.renderStatic(mons.getOrElse(i) { ItemStack.EMPTY }, ItemDisplayContext.FIXED, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, pose, buffers, level, 0)
+                pose.popPose()
+                text(font, line(r, now), -44f, y + 2f, pose, buffers)
+            }
+            val total = tr("foremon.board.total", "%,d".format(t.getLong("total")))
+            text(font, total, -font.width(total) / 2f, shown * ROW + 2f, pose, buffers)
+            pose.popPose()
+        }
+    }
+
+    /** One hauler: a ten-step load bar, then what it carries, or that it is out on a far road. */
+    private fun line(r: CompoundTag, now: Float): Component {
+        val need = r.getInt("need")
+        if (need <= 0) return Component.literal("\u25A1".repeat(10)).withColor(0x555555).append(Component.literal("  ")).append(tr("foremon.board.waiting").withColor(0xAAAAAA))
+        val f = ((now - r.getLong("start")) / need).coerceIn(0f, 1f)
+        val n = (f * 10).toInt()
+        val out = Component.literal("\u25A0".repeat(n)).withColor(0xFFC94A).append(Component.literal("\u25A0".repeat(10 - n)).withColor(0x555555))
+        if (r.contains("item")) out.append(Component.literal("  ${r.getInt("count")} ").withColor(0xFFFFFF)).append(MonIcons.item(r.getString("item")).hoverName.copy().withColor(0xFFFFFF))
+        if (r.getBoolean("away")) out.append(Component.literal("  ")).append(tr("foremon.board.away").withColor(0x5AB0FF))
+        return out
+    }
+
+    private fun text(font: net.minecraft.client.gui.Font, c: Component, x: Float, y: Float, pose: com.mojang.blaze3d.vertex.PoseStack, buffers: net.minecraft.client.renderer.MultiBufferSource) {
+        pose.pushPose()
+        pose.scale(S, -S, S)
+        font.drawInBatch(c, x, y, -1, false, pose.last().pose(), buffers, net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0x55000000, LightTexture.FULL_BRIGHT)
+        pose.popPose()
     }
 }

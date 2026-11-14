@@ -75,14 +75,31 @@ object Actions {
      * Both ends must be job sites of the same owner in this dimension (or the depot itself), within Supply Lines range.
      */
     fun remoteRoute(level: ServerLevel, s: Site, from: BlockPos, to: BlockPos): List<String> {
-        if (!Rules.has(level.server, s.owner, "remote_control")) return listOf("foremon.fail.needs_remote")
         val reach = Rules.skill(level.server, s.owner, "supply_lines")
         val sites = SiteStore.of(level).sites
         for (p in listOf(from, to)) {
-            if (p != s.pos && sites[p]?.owner != s.owner) return listOf("foremon.fail.not_owner")
+            // The depot and its own chests were reached by hand already; other job sites need Remote Control.
+            if (p == s.pos || p in s.links) continue
+            if (sites[p]?.owner != s.owner) return listOf("foremon.fail.not_owner")
+            if (!Rules.has(level.server, s.owner, "remote_control")) return listOf("foremon.fail.needs_remote")
             if (p.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.route_far", reach.toInt().toString())
         }
         return addRoute(level.server, s, from, to)
+    }
+
+    /**
+     * Dispatch: puts hauler [mon] on route [index] alone, or back on every route if it already was. How many routes may
+     * have a crew of their own is the Dispatch level. Returns a message for the player, or null when it worked.
+     */
+    fun crewToggle(server: net.minecraft.server.MinecraftServer, s: Site, index: Int, mon: UUID): List<String>? {
+        val r = s.routes.getOrNull(index) ?: return null
+        if (s.workers.none { it.pokemonId == mon }) return null
+        if (s.crews[mon] == r) { s.crews.remove(mon); return null }
+        val max = Rules.skill(server, s.owner, "dispatch").toInt()
+        val manned = s.workers.mapNotNull { s.crews[it.pokemonId] }.toSet()
+        if (r !in manned && manned.size >= max) return if (max == 0) listOf("foremon.fail.needs_dispatch") else listOf("foremon.fail.dispatch_limit", max.toString())
+        s.crews[mon] = r
+        return null
     }
 
     /** A bad packet or a bug in one action must never crash the server. */
@@ -168,6 +185,7 @@ object Actions {
                 if (chestPos == s.pos) s.ball = ball else if (chestPos in s.links) s.chest(chestPos).ball = ball
             }
             "route_remove" -> { s.removeRoute(t.getInt("index")); reset(s) }
+            "route_crew" -> crewToggle(player.server, s, t.getInt("index"), t.getUUID("mon"))?.let { Foremon.tell(player, it[0], *it.drop(1).toTypedArray()) }
             "route_add" -> {
                 val msg = remoteRoute(level, s, BlockPos.of(t.getLong("from")), BlockPos.of(t.getLong("to")))
                 Foremon.tell(player, msg[0], *msg.drop(1).toTypedArray())
@@ -260,6 +278,7 @@ object Actions {
         // Hauling: the owner's other job sites here, to pick route ends from with Remote Control.
         t.putBoolean("remote", Rules.has(server, s.owner, "remote_control"))
         t.putInt("routeReach", Rules.skill(server, s.owner, "supply_lines").toInt())
+        t.putInt("dispatch", Rules.skill(server, s.owner, "dispatch").toInt())
         if (s.job == Job.HAULING) t.put("sites", ListTag().also { l ->
             for (o in SiteStore.of(level).sites.values) if (o.owner == s.owner && o.pos != s.pos) l.add(CompoundTag().also { c ->
                 c.putLong("pos", o.pos.asLong()); c.putString("job", o.job.key)
@@ -272,6 +291,8 @@ object Actions {
                 c.putLong("from", a.asLong()); c.putLong("to", b.asLong())
                 c.putInt("dist", kotlin.math.sqrt(a.distSqr(b)).toInt())
                 c.putBoolean("loaded", level.isLoaded(a) && level.isLoaded(b))
+                // Dispatch: the haulers that work only this route.
+                c.put("crew", ListTag().also { cl -> for (w in s.workers) if (s.crews[w.pokemonId] == (a to b)) cl.add(StringTag.valueOf(w.pokemonId.toString())) })
             })
         })
         Jobs.box(s)?.let { (lo, hi) -> t.putLong("lo", lo.asLong()); t.putLong("hi", hi.asLong()); t.putBoolean("areaDone", s.cornerB != null) }

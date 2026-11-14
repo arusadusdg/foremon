@@ -83,6 +83,15 @@ object Inv {
         return false
     }
 
+    /** The first stack [extract] would take, without taking it. */
+    fun peek(storage: Storage<ItemVariant>, max: Int, test: (ItemStack) -> Boolean): ItemStack {
+        for (view in storage.nonEmptyViews()) {
+            val stack = view.resource.toStack(minOf(view.amount, max.toLong()).toInt())
+            if (test(stack)) return stack
+        }
+        return ItemStack.EMPTY
+    }
+
     /** True if at least one of [stack] would fit. Simulated: the transaction is never committed. */
     fun fits(storage: Storage<ItemVariant>, stack: ItemStack): Boolean =
         Transaction.openOuter().use { tx -> storage.insert(ItemVariant.of(stack), 1, tx) > 0 }

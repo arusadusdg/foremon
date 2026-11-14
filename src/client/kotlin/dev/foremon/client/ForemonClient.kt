@@ -16,8 +16,8 @@ object ForemonClient : ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(Net.EmoteP.TYPE) { p, ctx -> ctx.client().execute { Emotes.set(p.entityId, p.emote) } }
         ClientPlayNetworking.registerGlobalReceiver(Net.View.TYPE) { p, ctx -> ctx.client().execute { view(ctx.client(), p.kind, p.tag) } }
         ClientPlayNetworking.registerGlobalReceiver(Net.Markers.TYPE) { p, ctx -> ctx.client().execute { ChestMarkers.set(p.positions, p.kinds, p.balls) } }
-        ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> Emotes.clear(); ChestMarkers.clear() }
-        WorldRenderEvents.AFTER_ENTITIES.register { Emotes.render(it); ChestMarkers.render(it) }
+        ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> Emotes.clear(); ChestMarkers.clear(); HaulBoards.clear() }
+        WorldRenderEvents.AFTER_ENTITIES.register { Emotes.render(it); ChestMarkers.render(it); HaulBoards.render(it) }
     }
 
     private fun view(mc: Minecraft, kind: String, tag: CompoundTag) {
@@ -38,6 +38,7 @@ object ForemonClient : ClientModInitializer {
                 SystemToast.addOrUpdate(mc.toasts, SystemToast.SystemToastId.PERIODIC_NOTIFICATION, Component.literal("Foremon"), text)
             }
             "close" -> if (mc.screen is ForemonScreen) mc.setScreen(null)
+            "haul" -> HaulBoards.set(tag)
         }
     }
 }

@@ -64,7 +64,7 @@ object Foremon : ModInitializer {
         Net.register()
 
         ServerLifecycleEvents.SERVER_STARTING.register { Config.load() }
-        ServerTickEvents.START_WORLD_TICK.register { Ticker.tick(it); Net.syncMarkers(it) }
+        ServerTickEvents.START_WORLD_TICK.register { Ticker.tick(it); Net.syncMarkers(it); Net.syncHaul(it) }
         ServerPlayConnectionEvents.DISCONNECT.register { handler, _ ->
             Actions.selected.remove(handler.player.uuid); PlanUpload.forget(handler.player.uuid); Net.forgetMarkers(handler.player.uuid)
         }

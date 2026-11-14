@@ -230,7 +230,13 @@ object Workers {
     fun tetherBox(level: ServerLevel, s: Site): Pair<BlockPos, BlockPos> {
         val r = radius(level, s) + 8
         val v = vertical(level, s) + 8
-        return s.pos.offset(-r, -v, -r) to s.pos.offset(r, v, r)
+        var lo = s.pos.offset(-r, -v, -r); var hi = s.pos.offset(r, v, r)
+        // Haulers fly their routes, so their box reaches every route chest (and the arc above it).
+        for ((a, b) in s.routes) for (p in listOf(a, b)) {
+            lo = BlockPos(minOf(lo.x, p.x - 8), minOf(lo.y, p.y - 8), minOf(lo.z, p.z - 8))
+            hi = BlockPos(maxOf(hi.x, p.x + 8), maxOf(hi.y, p.y + 12), maxOf(hi.z, p.z + 8))
+        }
+        return lo to hi
     }
 
     private fun tether(level: ServerLevel, s: Site, w: Worker, p: Pokemon, e: PokemonEntity, box: Pair<BlockPos, BlockPos>) =

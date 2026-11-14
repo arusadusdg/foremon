@@ -383,7 +383,7 @@ class ForemonGameTest : FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
-    fun haulingConnectsJobSitesWithoutWalking(helper: GameTestHelper) {
+    fun haulersFlyNearbyRoutes(helper: GameTestHelper) {
         setup(helper)
         // A Lumber site's chest full of logs, a Smelting site's empty chest, and a Hauling depot between them.
         val lumber = site(helper, BlockPos(6, 1, 1), Job.LUMBER)
@@ -400,8 +400,10 @@ class ForemonGameTest : FabricGameTest {
             Workers.entity(helper.level, w)?.let { farthest = maxOf(farthest, kotlin.math.sqrt(it.distanceToSqr(depot.pos.x + 0.5, it.y, depot.pos.z + 0.5))) }
         }
         helper.succeedWhen {
-            if (farthest > 4.5) fail("the hauler walked ${"%.1f".format(farthest)} blocks away; it should work from the depot")
             if (count(helper, smelter.pos, Items.OAK_LOG) != 10) fail("all 10 logs should end up in the Smelting site's chest")
+            if (farthest < 5.0) fail("the hauler only got ${"%.1f".format(farthest)} blocks from the depot; it should fly the route")
+            val e = Workers.entity(helper.level, w)
+            if (e == null || e.isNoGravity || e.isInvisible || w.path != null) fail("after its loads the hauler should be back on its feet")
             if (count(helper, lumber.pos, Items.OAK_LOG) + count(helper, depot.pos, Items.OAK_LOG) != 0) fail("logs were left behind on the way")
             if (w.actions < 1) fail("each load should count as an action")
             cleanup(helper, depot); cleanup(helper, lumber); cleanup(helper, smelter)
@@ -465,12 +467,40 @@ class ForemonGameTest : FabricGameTest {
         put(helper, lumber, ItemStack(Items.OAK_LOG, 12))
         val msg = dev.foremon.net.Actions.remoteRoute(helper.level, depot, lumber.pos, depot.pos)
         if (msg[0] != "foremon.msg.route_added") fail("the remote route was refused: ${msg[0]}")
-        worker(helper, depot, "pidgey")
+        val w = worker(helper, depot, "pidgey")
         depot.active = true
+        var hidden = false
+        helper.onEachTick { if (Workers.entity(helper.level, w)?.isInvisible == true) hidden = true }
         helper.succeedWhen {
             if (count(helper, depot.pos, Items.OAK_LOG) != 12) fail("the logs have not all reached the depot yet")
+            if (!hidden) fail("on a far road the hauler should be out of sight, not standing at the depot")
+            if (depot.hauled != 12L) fail("the depot board should count 12 items moved, got ${depot.hauled}")
             cleanup(helper, depot); cleanup(helper, lumber)
             withSkill(helper, "remote_control", 0); withSkill(helper, "supply_lines", 0)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 2400, batch = "dispatch")
+    fun dispatchSendsHaulersWhereTheyAreTold(helper: GameTestHelper) {
+        setup(helper)
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        val logsFrom = site(helper, BlockPos(6, 1, 1), Job.LUMBER); val logsTo = site(helper, BlockPos(6, 1, 3), Job.SMELTING)
+        val stoneFrom = site(helper, BlockPos(6, 1, 5), Job.MINING); val stoneTo = site(helper, BlockPos(3, 1, 6), Job.BUILDING)
+        put(helper, logsFrom, ItemStack(Items.OAK_LOG, 8)); put(helper, stoneFrom, ItemStack(Items.COBBLESTONE, 8))
+        for (st in listOf(logsFrom, logsTo, stoneFrom, stoneTo)) depot.links.add(st.pos)
+        depot.routes.add(logsFrom.pos to logsTo.pos); depot.routes.add(stoneFrom.pos to stoneTo.pos)
+        val w = worker(helper, depot, "pidgey")
+        withSkill(helper, "dispatch", 0)
+        val no = dev.foremon.net.Actions.crewToggle(helper.level.server, depot, 1, w.pokemonId)
+        if (no?.get(0) != "foremon.fail.needs_dispatch") fail("without Dispatch a hauler cannot get a route of its own, got $no")
+        withSkill(helper, "dispatch", 1)
+        if (dev.foremon.net.Actions.crewToggle(helper.level.server, depot, 1, w.pokemonId) != null) fail("with Dispatch 1 the hauler should get route 2")
+        depot.active = true
+        helper.succeedWhen {
+            if (count(helper, stoneTo.pos, Items.COBBLESTONE) != 8) fail("the stone route should be done")
+            if (count(helper, logsFrom.pos, Items.OAK_LOG) != 8) fail("the hauler was sent to the stone route only, but it moved logs")
+            for (st in listOf(depot, logsFrom, logsTo, stoneFrom, stoneTo)) cleanup(helper, st)
+            withSkill(helper, "dispatch", 0)
         }
     }
 

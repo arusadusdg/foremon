@@ -60,6 +60,11 @@ abstract class JobLogic {
     open fun delivered(c: Ctx) {}
     /** True while the worker should hold on to its supplies instead of returning them to the chest. */
     open fun keepsSupplies(c: Ctx): Boolean = false
+    /**
+     * Where the worker goes while an action runs. Null: it stays at the target. Empty: it is off somewhere out of sight.
+     * Otherwise a path it flies along, start to end, over the length of the action.
+     */
+    open fun trip(c: Ctx, step: Step): List<net.minecraft.world.phys.Vec3>? = null
 
     /**
      * Looks for work a little at a time. A cursor walks the area and only [Config] many blocks are
@@ -677,6 +682,13 @@ object Courier : JobLogic() {
     override fun plan(c: Ctx): Step? {
         val routes = c.s.routes
         if (routes.isEmpty()) { c.status("foremon.status.make_routes"); return null }
+        // Dispatch: a hauler with a route of its own works only that one; the rest take every route in turn.
+        val mine = c.s.crews[c.w.pokemonId]?.let { routes.indexOf(it) } ?: -1
+        if (mine >= 0) {
+            if (worth(c, mine)) return Step(c.s.pos, Step.Kind.WORK, mine)
+            c.status("foremon.status.routes_idle")
+            return null
+        }
         for (k in routes.indices) {
             val i = (c.s.routeCursor + k) % routes.size
             if (worth(c, i)) {
@@ -696,6 +708,26 @@ object Courier : JobLogic() {
 
     override fun stillValid(c: Ctx, step: Step) = worth(c, step.data)
 
+    /**
+     * A route the world is running all the way along is flown for real: depot, chest it takes from, chest it delivers to,
+     * depot. Anywhere else the hauler is out of sight on the road and shows on the depot board instead.
+     */
+    override fun trip(c: Ctx, step: Step): List<net.minecraft.world.phys.Vec3> {
+        val (from, to) = c.s.routes.getOrNull(step.data) ?: return emptyList()
+        c.w.hauling = if (!loaded(c, step.data)) ItemStack.EMPTY else route(c, step.data)?.let { r ->
+            Inv.peek(r.from, (c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt(), r.test)
+        } ?: ItemStack.EMPTY
+        val home = c.e.position()
+        val path = listOf(home, net.minecraft.world.phys.Vec3.atCenterOf(from).add(0.0, 1.0, 0.0),
+            net.minecraft.world.phys.Vec3.atCenterOf(to).add(0.0, 1.0, 0.0), home)
+        for (k in 0 until path.size - 1) {
+            val a = path[k]; val b = path[k + 1]
+            val n = (a.distanceTo(b) / 8).toInt() + 1
+            for (j in 0..n) if (!c.level.isPositionEntityTicking(BlockPos.containing(a.lerp(b, j.toDouble() / n)))) return emptyList()
+        }
+        return path
+    }
+
     override fun act(c: Ctx, step: Step): Boolean {
         val far = !loaded(c, step.data)
         val r = route(c, step.data, load = true)
@@ -711,6 +743,7 @@ object Courier : JobLogic() {
         val moved = stack.count
         // What did not fit goes back where it came from; anything even that will not take, the hauler holds for the depot.
         val rest = Inv.insert(r.to, stack)
+        c.s.hauled += moved - rest.count
         if (!rest.isEmpty) Inv.insert(r.from, rest).let { if (!it.isEmpty) c.carry(it) }
         Net.fx(c.level, c.e, Net.FX_DELIVER, c.s.pos, 0)
         return rest.count < moved

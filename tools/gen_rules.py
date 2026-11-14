@@ -140,6 +140,7 @@ N = [
     node('fleet_feet', 'logistics', 4, 50, 1, 0, per=.08, icon='minecraft:rabbit_foot'),
     node('long_haul', 'logistics', 4, 50, 2, 0, base=24, per=16, icon='minecraft:rail'),
     node('supply_lines', 'logistics', 5, 80, 2, 1, base=500, per=900, icon='minecraft:filled_map'),
+    node('dispatch', 'logistics', 5, 60, 3, 1, base=0, per=1, icon='minecraft:compass'),
     node('item_magnet', 'logistics', 4, 40, 3, 0, base=2, per=1.5, icon='minecraft:lodestone'),
     node('tidy_up', 'logistics', 1, 150, 0, 1, icon='minecraft:barrel'),
     node('quick_recall', 'logistics', 3, 60, 1, 1, per=.20, icon='minecraft:ender_pearl'),
