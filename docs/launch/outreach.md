@@ -15,7 +15,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that actually work
 > build Litematica schematics block by block. A level 50 Machop takes down a tree, leaves and all, in one
 > swing.
 >
-> 20-second clip: https://www.tiktok.com/@redditsorries/video/7707809016776363286
+> 20-second clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
 > Download: https://modrinth.com/mod/foremon
 >
 > It's Fabric 1.21.1 with Cobblemon 1.7.3. I'm happy to set up a test world or answer anything. In the

@@ -42,3 +42,4 @@ replay_*.log
 # local logs and test runs
 *.log
 build/gametest/
+docs/launch/youtubers.md
