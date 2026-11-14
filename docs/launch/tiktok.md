@@ -34,7 +34,7 @@ Links, in this order:
 1. **Download on Modrinth** -> `https://modrinth.com/mod/foremon`
 2. **Download on CurseForge** -> `https://www.curseforge.com/minecraft/mc-mods/foremon` (the real address appears once CurseForge approves the project)
 3. **Join the Discord** -> your server invite (set it to never expire)
-4. **Report a bug / see the code** -> `https://github.com/<you>/foremon`
+4. **Report a bug / see the code** -> `https://github.com/arusadusdg/foremon`
 5. **Watch on YouTube** -> your channel, once there is one
 
 ## First video

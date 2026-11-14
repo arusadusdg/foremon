@@ -56,74 +56,113 @@ for src, dst in [('probe_02_site_assigned.png', 'screenshot-site.png'), ('probe_
                  ('probe_13_dex.png', 'screenshot-dex.png')]:
     if os.path.exists(f'{SHOTS}/{src}'): shutil.copy(f'{SHOTS}/{src}', f'{OUT}/{dst}')
 
-# ---------------------------------------------------------------- vertical video, 1080x1920 at 20 fps
-W, H, FPS = 1080, 1920, 20
+# ---------------------------------------------------------------- vertical video, 1080x1920 at 30 fps
+# Cuts sit on a 0.5 s grid (120 BPM) so most trending sounds line up; the sound itself is picked in TikTok.
+from PIL import ImageFilter
+import random
+W, H, FPS = 1080, 1920, 30
 tmp = 'run/video_frames'
 shutil.rmtree(tmp, ignore_errors=True); os.makedirs(tmp)
-big = ImageFont.truetype(FONT_BOLD, 92)
-mid = ImageFont.truetype(FONT_BOLD, 64)
-small = ImageFont.truetype(FONT, 40)
-RED, WHITE, DARK = (224, 58, 58), (255, 255, 255), (20, 24, 32)
+WHITE, YELLOW, PANEL_Y = (255, 255, 255), (255, 214, 64), 540
+_fonts = {}
 
 
-def canvas():
-    c = Image.new('RGB', (W, H), DARK)
-    d = ImageDraw.Draw(c)
-    d.rectangle((0, 0, W, 210), fill=RED)          # Poke Ball top
-    d.rectangle((0, 210, W, 226), fill=(20, 20, 20))
-    return c, d
+def text(d, y, s, size, fill=WHITE, age=99):
+    """Centred caption that pops in over its first 5 frames, kept clear of TikTok's top tabs and screen edges."""
+    size = round(size * (1 + 0.3 * max(0, 1 - age / 5)))
+    while True:
+        f = _fonts.get(size) or _fonts.setdefault(size, ImageFont.truetype(FONT_BOLD, size))
+        w = d.textlength(s, font=f)
+        if w <= W - 80: break
+        size -= 4
+    y += 80
+    d.text(((W - w) / 2, y - size / 2), s, font=f, fill=fill, stroke_width=max(4, size // 12), stroke_fill=(0, 0, 0))
 
 
-def centered(d, y, text, font, fill=WHITE):
-    w = d.textlength(text, font=font)
-    d.text(((W - w) / 2, y), text, font=font, fill=fill, stroke_width=4, stroke_fill=(0, 0, 0))
+def backdrop(im, cx):
+    """The same frame, blurred and dimmed, filling the whole phone screen."""
+    x0 = min(max(cx - 135, 0), im.width - 270)
+    bg = im.crop((x0, 0, x0 + 270, 480)).resize((108, 192)).filter(ImageFilter.GaussianBlur(3)).resize((W, H))
+    return Image.eval(bg, lambda v: v // 2)
+
+
+def game(src, z=1.0, cx=427, cy=240, shake=0, flash=0.0):
+    im = Image.open(src).convert('RGB')
+    c = backdrop(im, cx)
+    s = 480 / z
+    x0, y0 = min(max(cx - s / 2, 0), im.width - s), min(max(cy - s / 2, 0), 480 - s)
+    panel = im.crop((round(x0), round(y0), round(x0 + s), round(y0 + s))).resize((W, W), Image.LANCZOS)
+    c.paste(panel, (random.randint(-shake, shake), PANEL_Y + random.randint(-shake, shake)))
+    if flash: c = Image.blend(c, Image.new('RGB', c.size, WHITE), flash)
+    return c, ImageDraw.Draw(c)
+
+
+def ui(src, z):
+    im = Image.open(src).convert('RGB')
+    c = backdrop(im, 427)
+    w = round(W * z); h = round(w * 480 / 854)
+    shot = im.resize((w, h), Image.LANCZOS).crop(((w - W) // 2, 0, (w - W) // 2 + W, h))
+    c.paste(shot, (0, PANEL_Y + (W - h) // 2))
+    return c, ImageDraw.Draw(c)
 
 
 n = 0
 
 
-def emit(img, times=1):
+def emit(img):
     global n
-    for _ in range(times):
-        img.save(f'{tmp}/{n:05d}.png'); n += 1
+    img.save(f'{tmp}/{n:05d}.jpg', quality=92); n += 1
 
 
-def card(lines, seconds, logo=False):
-    c, d = canvas()
-    if logo:
-        icon = Image.open(f'{OUT}/icon-512.png').resize((520, 520), Image.NEAREST)
-        c.paste(icon, ((W - 520) // 2, 520), icon)
-    y = 300 if not logo else 1120
-    for text, font in lines:
-        centered(d, y, text, font); y += font.size + 40
-    emit(c, int(seconds * FPS))
-
-
-def clip(files, top, bottom, repeat=1, hold=0):
-    for i, f in enumerate(files):
-        c, d = canvas()
-        im = Image.open(f).convert('RGB')
-        im = im.resize((W, round(im.height * W / im.width)), Image.LANCZOS)
-        im = im.crop((0, 0, W, im.height))
-        # Zoom the game picture to fill the middle of the screen.
-        zoom = 1.6
-        zw, zh = round(W * zoom), round(im.height * zoom)
-        im = im.resize((zw, zh), Image.LANCZOS).crop(((zw - W) // 2, 0, (zw - W) // 2 + W, zh))
-        c.paste(im, (0, (H - im.height) // 2))
-        centered(d, 70, top, mid)
-        centered(d, H - 300, bottom, small)
-        emit(c, hold if (hold and i == len(files) - 1) else repeat)
-
-
-card([('My Pokemon', big), ('got jobs', big)], 1.6)
-if timber_clip: clip(timber_clip, 'Level 55 Machop', 'The whole tree, leaves and all, in one swing', repeat=3, hold=30)
-if house: clip(house[::2], 'Building from Litematica', 'A crew of three builds a real village house', repeat=1, hold=40)
-card([('Foremon', big), ('Free on Modrinth', mid), ('and CurseForge', mid), ('Made with AI assistance', small)], 3.0, logo=True)
+random.seed(7)
+HIT, TREE, HOUSE = 24, (420, 200), (450, 230)
+if timber:
+    for i in range(36):  # hook: the tree still standing, slow push-in
+        c, d = game(timber[min(i // 3, HIT - 11)], 1.0 + 0.2 * i / 36, *TREE)
+        text(d, 230, 'My Pokémon', 120, age=i); text(d, 370, 'got a JOB', 140, YELLOW, age=i - 6)
+        emit(c)
+    for i in range(75):  # the swing: 3 output frames per game frame, impact at i = 30
+        k = i - 30
+        hit = max(0, 1 - k / 8) if k >= 0 else 0
+        c, d = game(timber[HIT - 10 + i // 3], 1.2 + 0.25 * hit + 0.1 * i / 75, *TREE, shake=round(14 * hit), flash=0.75 * hit)
+        if k < 0: text(d, 230, 'Lv 55 Machop', 110, age=i); text(d, 360, 'vs. a whole tree', 90, age=i - 6)
+        else: text(d, 260, 'ONE SWING.', 150, YELLOW, age=k); text(d, 400, 'leaves and all', 90, age=k - 6)
+        emit(c)
+    for i in range(30):  # the drops fly back to the chest
+        c, d = game(timber[min(HIT + 15 + i, len(timber) - 1)], 1.3 - 0.2 * i / 30, *TREE)
+        text(d, 260, 'loot goes to the chest', 90, age=i)
+        emit(c)
+if house:
+    clip = house[::3]
+    for i, f in enumerate(clip + [clip[-1]] * 15):  # time-lapse, then a short hold on the finished house
+        c, d = game(f, 1.0 + 0.3 * min(i, len(clip)) / len(clip), *HOUSE)
+        if i < 50: text(d, 230, 'it builds your', 100, age=i); text(d, 360, 'Litematica schematics', 90, YELLOW, age=i - 6)
+        elif i < len(clip): text(d, 260, 'block by block', 120, age=i - 50)
+        else: text(d, 260, 'real village house', 110, YELLOW, age=i - len(clip))
+        emit(c)
+for src, line in [('probe_25_skills_labour.png', '38-upgrade skill tree'), ('probe_28_pc_box.png', 'workers from your PC'),
+                  ('probe_21c_chests_ball_changed.png', 'Poké Ball chests'), ('probe_26_perks_lumber.png', 'level-up perks')]:
+    if not os.path.exists(f'{SHOTS}/{src}'): continue
+    for i in range(15):
+        c, d = ui(f'{SHOTS}/{src}', 1.0 + 0.06 * i / 15)
+        text(d, 300, line, 100, age=i)
+        emit(c)
+last = Image.open((house or timber)[-1]).convert('RGB')
+icon = Image.open(f'{OUT}/icon-512.png').convert('RGBA').resize((420, 420), Image.NEAREST)
+for i in range(75):  # end card
+    c = backdrop(last, HOUSE[0]); d = ImageDraw.Draw(c)
+    c.paste(icon, ((W - 420) // 2, 460), icon)
+    text(d, 960, 'FOREMON', 160, YELLOW, age=i)
+    text(d, 1110, 'free Cobblemon addon', 80, age=i - 4)
+    text(d, 1220, 'Modrinth + CurseForge', 80, age=i - 8)
+    text(d, 1340, 'link in bio', 90, YELLOW, age=i - 12)
+    text(d, 1460, 'made with AI assistance', 48, age=i - 16)
+    emit(c)
 
 import imageio_ffmpeg
 ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
 out = f'{OUT}/foremon-tiktok.mp4'
-subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-framerate', str(FPS), '-i', f'{tmp}/%05d.png',
-                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-movflags', '+faststart', out], check=True)
+subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-framerate', str(FPS), '-i', f'{tmp}/%05d.jpg',
+                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-movflags', '+faststart', out], check=True)
 print(out, n, 'frames,', round(n / FPS, 1), 's,', os.path.getsize(out) // 1024, 'KB')
 shutil.rmtree(tmp, ignore_errors=True)

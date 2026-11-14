@@ -11,8 +11,8 @@ projects before they appear.
 | Other categories | Utility & QoL, Mobs |
 | License | MIT |
 | Logo | `docs/media/icon-512.png` |
-| Issues URL | `https://github.com/<you>/foremon/issues` |
-| Source URL | `https://github.com/<you>/foremon` |
+| Issues URL | `https://github.com/arusadusdg/foremon/issues` |
+| Source URL | `https://github.com/arusadusdg/foremon` |
 | Discord | your invite |
 
 ## Description

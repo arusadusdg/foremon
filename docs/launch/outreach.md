@@ -15,8 +15,8 @@ Subject: Free Cobblemon addon for a video: Pokemon that actually work
 > build Litematica schematics block by block. A level 50 Machop takes down a tree, leaves and all, in one
 > swing.
 >
-> 20-second clip: <link to the TikTok or GIF>
-> Download: <Modrinth link>
+> 20-second clip: https://www.tiktok.com/@redditsorries/video/7707809016776363286
+> Download: https://modrinth.com/mod/foremon
 >
 > It's Fabric 1.21.1 with Cobblemon 1.7.3. I'm happy to set up a test world or answer anything. In the
 > interest of honesty: it was built with the help of an AI coding assistant.
@@ -38,7 +38,7 @@ Subject: Foremon, a Cobblemon worker addon, for <pack name>
 > workers on 5 sites cost under 1 ms per server tick in testing. It runs in <pack name> next to its
 > 300-odd mods without errors.
 >
-> Modrinth: <link> | GitHub: <link>
+> Modrinth: https://modrinth.com/mod/foremon | GitHub: https://github.com/arusadusdg/foremon
 >
 > It was developed with an AI coding assistant, and it is version 1, so I'd value your feedback.
 >

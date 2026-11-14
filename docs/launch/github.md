@@ -10,7 +10,7 @@ The code is committed locally (branch `main`). Once you are signed in to GitHub 
 4. In the project folder:
 
 ```bash
-git remote add origin https://github.com/<you>/foremon.git
+git remote add origin https://github.com/arusadusdg/foremon.git
 ```
 
 ```bash

@@ -34,7 +34,7 @@ Name: **Foremon**. Icon: `docs/media/icon-512.png`.
 > **Welcome to Foremon!** Foremon puts your Cobblemon to work: they chop, mine, farm, smelt, sort and
 > build your Litematica schematics, for real.
 >
-> Download: Modrinth <link> | CurseForge <link> | Code and bug tracker: GitHub <link>
+> Download: Modrinth https://modrinth.com/mod/foremon | CurseForge https://www.curseforge.com/minecraft/mc-mods/foremon | Code and bug tracker: GitHub https://github.com/arusadusdg/foremon
 >
 > This is version 1: please report bugs in #bug-reports and share ideas in #ideas.
 > Foremon is developed with the help of an AI coding assistant.
@@ -47,5 +47,5 @@ Name: **Foremon**. Icon: `docs/media/icon-512.png`.
 > **Foremon 1.0.0 is out!** 🎉
 > Put your Pokemon to work: 8 jobs, level perks (Timber fells whole trees at level 50), a 38-upgrade skill
 > tree, Poke Ball chests with their own filters, and building straight from Litematica.
-> Modrinth: <link> | CurseForge: <link>
+> Modrinth: https://modrinth.com/mod/foremon | CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon
 > Found a bug? #bug-reports. Want something? #ideas.

@@ -15,7 +15,7 @@ Create at https://modrinth.com/dashboard/projects (New project).
 | Environment | Client: required. Server: required |
 | License | MIT |
 | Icon | `docs/media/icon-512.png` |
-| Links | Issues: `https://github.com/<you>/foremon/issues`, Source: `https://github.com/<you>/foremon`, Discord: your invite |
+| Links | Issues: `https://github.com/arusadusdg/foremon/issues`, Source: `https://github.com/arusadusdg/foremon`, Discord: your invite |
 
 ## Description
 
@@ -25,7 +25,7 @@ already in the text, right under the title.
 
 Add at the end:
 
-> **This is version 1.** Please report bugs on [GitHub](https://github.com/<you>/foremon/issues) and
+> **This is version 1.** Please report bugs on [GitHub](https://github.com/arusadusdg/foremon/issues) and
 > vote on what comes next in the Discord.
 
 ## Gallery
