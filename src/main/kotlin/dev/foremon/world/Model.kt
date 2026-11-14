@@ -39,8 +39,6 @@ fun ballIndex(id: String): Int = BALLS.indexOf(id).coerceAtLeast(0)
 /** Settings of one extra chest: the ball it is marked with, and which items may be put in it. */
 class ChestInfo(var ball: String) {
     val filter = Filter()
-    /** Hauling only: the crew takes from this chest into the site's own chest, instead of sending to it. */
-    var take = false
 }
 
 /** "Only these" or "all except these" over blocks and items. Entries are ids ("minecraft:stone") or tags ("#c:ores"). */
@@ -158,7 +156,18 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     /** The filter for [pos]: the site's own filter for its chest, the extra chest's filter otherwise. */
     fun filterFor(pos: BlockPos): Filter = if (pos == this.pos || pos !in links) filter else chest(pos).filter
 
-    fun removeLink(pos: BlockPos): Boolean { chests.remove(pos); return links.remove(pos) }
+    /** Hauling: where items go, from one chest to another. Either end may be the site's own chest or any extra chest. */
+    val routes = ArrayList<Pair<BlockPos, BlockPos>>()
+
+    /** Removes an extra chest, and every route that used it. */
+    fun removeLink(pos: BlockPos): Boolean { chests.remove(pos); routes.removeIf { it.first == pos || it.second == pos }; return links.remove(pos) }
+
+    /** Removes a route, and any extra chest no other route uses any more. */
+    fun removeRoute(index: Int) {
+        val r = routes.getOrNull(index) ?: return
+        routes.removeAt(index)
+        for (p in listOf(r.first, r.second)) if (p != pos && routes.none { it.first == p || it.second == p }) { links.remove(p); chests.remove(p) }
+    }
     /** Build job: uploaded placement, see Plan. */
     var plan: Plan? = null
     var done = 0L
@@ -180,11 +189,12 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         t.putString("job", job.key); t.putBoolean("active", active); t.putLong("done", done)
         cornerA?.let { t.putLong("a", it.asLong()) }; cornerB?.let { t.putLong("b", it.asLong()) }
         t.putLongArray("links", links.map { it.asLong() })
+        t.putLongArray("routes", routes.flatMap { listOf(it.first.asLong(), it.second.asLong()) })
         t.put("filter", filter.save())
         t.putString("ball", ball)
         t.put("chests", ListTag().also { l ->
             for ((p, info) in chests) if (p in links) l.add(CompoundTag().also { c ->
-                c.putLong("pos", p.asLong()); c.putString("ball", info.ball); c.put("filter", info.filter.save()); c.putBoolean("take", info.take)
+                c.putLong("pos", p.asLong()); c.putString("ball", info.ball); c.put("filter", info.filter.save())
             })
         })
         plan?.let { t.put("plan", it.save()) }
@@ -213,13 +223,13 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                 if (t.contains("a")) s.cornerA = BlockPos.of(t.getLong("a"))
                 if (t.contains("b")) s.cornerB = BlockPos.of(t.getLong("b"))
                 t.getLongArray("links").forEach { s.links.add(BlockPos.of(it)) }
+                t.getLongArray("routes").let { a -> for (i in 0 until a.size / 2) s.routes.add(BlockPos.of(a[2 * i]) to BlockPos.of(a[2 * i + 1])) }
                 s.filter.load(t.getCompound("filter"))
                 if (t.contains("ball")) s.ball = t.getString("ball").takeIf { it in BALLS } ?: BALLS[0]
                 for (c in t.getList("chests", Tag.TAG_COMPOUND.toInt())) {
                     c as CompoundTag
                     val info = ChestInfo(c.getString("ball").takeIf { it in BALLS } ?: BALLS[1])
                     info.filter.load(c.getCompound("filter"))
-                    info.take = c.getBoolean("take")
                     s.chests[BlockPos.of(c.getLong("pos"))] = info
                 }
                 if (t.contains("plan")) s.plan = Plan.load(t.getCompound("plan"))

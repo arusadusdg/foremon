@@ -37,6 +37,34 @@ object Actions {
     /** The job site each player last opened; the whistle's sneak-click actions apply to it. */
     val selected = HashMap<UUID, GlobalPos>()
 
+    /** Hauling: the chest each player picked as the start of a new route, with the site it is for. */
+    val routeStart = HashMap<UUID, Pair<BlockPos, BlockPos>>()
+
+    /**
+     * Hauling: a sneak-click on a chest. The first click picks where a route starts, the second where it goes.
+     * Any chest the player may use and that is in reach of the site works, the site's own chest too.
+     * Returns the message for the player: its key, then its arguments.
+     */
+    fun routeClick(player: ServerPlayer, level: ServerLevel, s: Site, chest: BlockPos, chestSiteOwner: UUID?): List<String> {
+        if (chest != s.pos) {
+            if (chestSiteOwner != null && chestSiteOwner != s.owner) return listOf("foremon.fail.not_owner")
+            if (!dev.foremon.work.Protection.playerMayUse(level, player, chest)) return listOf("foremon.fail.chest_protected")
+            val reach = Rules.skill(player.server, s.owner, "long_haul") * Config.a.haulRouteReach
+            if (chest.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.link_far", reach.toInt().toString())
+        }
+        val pending = routeStart.remove(player.uuid)
+        val start = if (pending?.first == s.pos) pending.second else null
+        if (start == null) { routeStart[player.uuid] = s.pos to chest; return listOf("foremon.msg.route_from", "${chest.x} ${chest.y} ${chest.z}") }
+        if (start == chest) return listOf("foremon.msg.route_cancelled")
+        if (s.routes.any { it.first == start && it.second == chest }) return listOf("foremon.fail.route_exists")
+        val max = Rules.skill(player.server, s.owner, "linked_chests").toInt()
+        if (s.routes.size >= max) return listOf("foremon.fail.route_limit", max.toString())
+        // Both ends become chests of the site, so they get a ball marker and a filter (the site's own chest already has both).
+        for (p in listOf(start, chest)) if (p != s.pos && p !in s.links) { s.links.add(p); s.chest(p) }
+        s.routes.add(start to chest)
+        return listOf("foremon.msg.route_added", s.routes.size.toString(), max.toString())
+    }
+
     /** A bad packet or a bug in one action must never crash the server. */
     fun guarded(player: ServerPlayer, block: () -> Unit) {
         try { block() } catch (e: Exception) {
@@ -119,7 +147,7 @@ object Actions {
                 val ball = t.getString("ball").takeIf { it in BALLS } ?: BALLS[0]
                 if (chestPos == s.pos) s.ball = ball else if (chestPos in s.links) s.chest(chestPos).ball = ball
             }
-            "chest_take" -> BlockPos.of(t.getLong("chest")).takeIf { it in s.links }?.let { s.chest(it).take = !s.chest(it).take; reset(s) }
+            "route_remove" -> { s.removeRoute(t.getInt("index")); reset(s) }
             "link_remove" -> s.removeLink(BlockPos.of(t.getLong("chest")))
             "clear_area" -> { s.cornerA = null; s.cornerB = null; reset(s) }
             "clear_links" -> { s.links.clear(); s.chests.clear() }
@@ -192,17 +220,25 @@ object Actions {
         t.put("filter", ListTag().also { l -> s.filter.entries.forEach { l.add(StringTag.valueOf(it)) } })
         // Every chest of the site, the site's own chest first, with its ball and its filter.
         t.put("chests", ListTag().also { l ->
-            fun add(p: BlockPos, ball: String, f: dev.foremon.world.Filter, main: Boolean, take: Boolean) = l.add(CompoundTag().also { c ->
+            fun add(p: BlockPos, ball: String, f: dev.foremon.world.Filter, main: Boolean) = l.add(CompoundTag().also { c ->
                 c.putLong("pos", p.asLong()); c.putString("ball", ball); c.putBoolean("main", main); c.putBoolean("only", f.only)
                 c.put("entries", ListTag().also { el -> f.entries.forEach { el.add(StringTag.valueOf(it)) } })
                 // A far Hauling chest may be in an unloaded chunk: it is not missing, just not loaded, and must not be loaded to look.
                 val loaded = level.isLoaded(p)
                 c.putBoolean("present", !loaded || dev.foremon.work.Inv.storage(level, p) != null)
-                c.putBoolean("loaded", loaded); c.putBoolean("take", take)
+                c.putBoolean("loaded", loaded)
                 c.putInt("dist", kotlin.math.sqrt(p.distSqr(s.pos)).toInt())
             })
-            add(s.pos, s.ball, s.filter, true, false)
-            for (link in s.links) { val info = s.chest(link); add(link, info.ball, info.filter, false, info.take) }
+            add(s.pos, s.ball, s.filter, true)
+            for (link in s.links) { val info = s.chest(link); add(link, info.ball, info.filter, false) }
+        })
+        // Hauling routes, from one of the chests above to another.
+        t.put("routes", ListTag().also { l ->
+            for ((a, b) in s.routes) l.add(CompoundTag().also { c ->
+                c.putLong("from", a.asLong()); c.putLong("to", b.asLong())
+                c.putInt("dist", kotlin.math.sqrt(a.distSqr(b)).toInt())
+                c.putBoolean("loaded", level.isLoaded(a) && level.isLoaded(b))
+            })
         })
         Jobs.box(s)?.let { (lo, hi) -> t.putLong("lo", lo.asLong()); t.putLong("hi", hi.asLong()); t.putBoolean("areaDone", s.cornerB != null) }
         s.plan?.let { p -> t.put("plan", CompoundTag().also { c -> c.putString("name", p.name); c.putInt("size", p.size); c.putInt("index", p.index); c.putInt("placed", p.placed); c.putInt("skipped", p.skipped) }) }

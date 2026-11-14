@@ -159,13 +159,15 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         button(g, cx, y0 + 32, quarter - 1, 16, tr("foremon.gui.tab_crew"), accent = tab == 0) { tab = 0 }
         button(g, cx + quarter, y0 + 32, quarter - 1, 16, tr("foremon.gui.tab_pc"), accent = tab == 2,
             tooltip = lines(tr("foremon.gui.tab_pc.hint"))) { tab = 2; pc = null; pcAsked = -1 }
-        button(g, cx + quarter * 2, y0 + 32, quarter - 1, 16, tr("foremon.gui.tab_chests", chests().size), accent = tab == 3,
-            tooltip = lines(tr("foremon.gui.tab_chests.hint"))) { tab = 3 }
+        val hauling = job == Job.HAULING
+        button(g, cx + quarter * 2, y0 + 32, quarter - 1, 16,
+            if (hauling) tr("foremon.gui.tab_routes", data.getList("routes", Tag.TAG_COMPOUND.toInt()).size) else tr("foremon.gui.tab_chests", chests().size), accent = tab == 3,
+            tooltip = lines(tr(if (hauling) "foremon.gui.routes.how" else "foremon.gui.tab_chests.hint"))) { tab = 3 }
         button(g, cx + quarter * 3, y0 + 32, cw - quarter * 3, 16, tr("foremon.gui.tab_filter_short"), accent = tab == 1) { tab = 1 }
         when (tab) {
             0 -> crew(g, cx, y0 + 52, cw, h - 66)
             2 -> pcTab(g, cx, y0 + 52, cw, h - 66)
-            3 -> chestsTab(g, cx, y0 + 52, cw, h - 66)
+            3 -> if (hauling) routesTab(g, cx, y0 + 52, cw, h - 66) else chestsTab(g, cx, y0 + 52, cw, h - 66)
             else -> filter(g, cx, y0 + 52, cw)
         }
 
@@ -285,20 +287,9 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
                 else if (entries == 0) tr("foremon.gui.chest_takes_all")
                 else tr(if (c.getBoolean("only")) "foremon.gui.chest_only_n" else "foremon.gui.chest_except_n", entries)
             val bw = 36
-            // Hauling: each extra chest is a route, sent to or taken from, with a button to flip it.
-            val route = job == Job.HAULING && !main
-            val tw = if (route) 40 else 0
             // The text stops before the buttons; the position is in the tooltip when it does not fit.
-            val textW = w - 23 - bw - tw - (if (main) 6 else 24)
-            val where = if (route) "  ${c.getInt("dist")}m" + (if (c.getBoolean("loaded")) "" else " · " + tr("foremon.gui.route_unloaded").string) else "  ${cpos.x} ${cpos.y} ${cpos.z}"
-            val line = summary.string + where
-            if (route) {
-                val take = c.getBoolean("take")
-                button(g, x + w - bw - 20 - tw, ry + 2, tw - 2, 16, tr(if (take) "foremon.gui.route_take" else "foremon.gui.route_send"),
-                    tooltip = lines(tr(if (take) "foremon.gui.route_take_tip" else "foremon.gui.route_send_tip"), muted(tr("foremon.gui.route_flip")))) {
-                    op("chest_take") { t -> t.putLong("chest", c.getLong("pos")) }
-                }
-            }
+            val textW = w - 23 - bw - (if (main) 6 else 24)
+            val line = summary.string + "  ${cpos.x} ${cpos.y} ${cpos.z}"
             g.drawString(font, font.plainSubstrByWidth(line, textW), x + 23, ry + 11, Pal.POKE_TEXT_SOFT, true)
             if (hover(x + 23, ry, textW, rowH - 2)) tip = lines(name, Component.literal(line))
             button(g, x + w - bw - (if (main) 2 else 20), ry + 2, bw, 16, tr("foremon.gui.tab_filter_short")) { filterChest = c.getLong("pos"); tab = 1 }
@@ -309,6 +300,41 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         }
         if (all.size > rows) text(g, tr("foremon.gui.more", all.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)
         clip(g, muted(tr("foremon.gui.links.how")), x, y0 + h - 10, w, Pal.MUTED)
+    }
+
+    /** Hauling: every route, from one chest to another, what it carries and how far it goes. */
+    private fun routesTab(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int) {
+        val routes = data.getList("routes", Tag.TAG_COMPOUND.toInt())
+        val all = chests()
+        text(g, tr("foremon.gui.routes", routes.size, data.getInt("maxLinks")), x, y0, Pal.MUTED)
+        fun chestAt(pos: Long) = all.indexOfFirst { it.getLong("pos") == pos }
+        fun nameOf(i: Int): Component = if (i <= 0) tr("foremon.gui.chest_main") else tr("foremon.gui.chest_extra", i)
+        val rowH = 22
+        val rows = ((h - 24) / rowH).coerceAtLeast(1)
+        for (i in 0 until min(routes.size, rows)) {
+            val r = routes.getCompound(i)
+            val ry = y0 + 11 + i * rowH
+            pokePanel(g, x, ry, w, rowH - 2, false)
+            val a = chestAt(r.getLong("from")); val b = chestAt(r.getLong("to"))
+            all.getOrNull(a)?.let { icon(g, MonIcons.ball(it.getString("ball")), x + 3, ry + 2) }
+            g.drawString(font, "\u2192", x + 22, ry + 6, 0xFFFFFFFF.toInt(), true)
+            all.getOrNull(b)?.let { icon(g, MonIcons.ball(it.getString("ball")), x + 31, ry + 2) }
+            val bw = 36
+            val textW = w - 51 - bw - 24
+            clip(g, Component.empty().append(nameOf(a)).append(" \u2192 ").append(nameOf(b)), x + 51, ry + 2, textW, 0xFFFFFFFF.toInt())
+            // What it carries is the filter of the chest it delivers to.
+            val dest = all.getOrNull(b)
+            val entries = dest?.getList("entries", Tag.TAG_STRING.toInt())?.size ?: 0
+            val carries = if (dest == null || entries == 0) tr("foremon.gui.chest_takes_all")
+                else tr(if (dest.getBoolean("only")) "foremon.gui.chest_only_n" else "foremon.gui.chest_except_n", entries)
+            val line = carries.string + "  ${r.getInt("dist")}m" + (if (r.getBoolean("loaded")) "" else " \u00b7 " + tr("foremon.gui.route_unloaded").string)
+            clip(g, Component.literal(line), x + 51, ry + 11, textW, Pal.POKE_TEXT_SOFT)
+            button(g, x + w - bw - 20, ry + 2, bw, 16, tr("foremon.gui.tab_filter_short"), tooltip = lines(tr("foremon.gui.route_filter_tip"))) { filterChest = r.getLong("to"); tab = 1 }
+            button(g, x + w - 18, ry + 2, 16, 16, Component.literal("x"), tooltip = lines(tr("foremon.gui.route_remove"))) { op("route_remove") { t -> t.putInt("index", i) } }
+        }
+        if (routes.size > rows) text(g, tr("foremon.gui.more", routes.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)
+        if (routes.isEmpty()) clip(g, muted(tr("foremon.status.make_routes")), x, y0 + 14, w, Pal.MUTED)
+        clip(g, muted(tr("foremon.gui.routes.how")), x, y0 + h - 10, w, Pal.MUTED)
     }
 
     /** A PC box, drawn like the storage system in the games: pick any Pokemon in it to put it to work. */

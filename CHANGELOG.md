@@ -3,14 +3,17 @@
 ## 1.1.0
 
 ### Hauling routes
-- Hauling crews no longer walk. They stay at the site's chest and move loads between chests on a timer, and each
-  hauler's card shows a bar filling up as it works on a load.
-- Every extra chest of a Hauling site is a route: **Send** (from the site's chest into it) or **Take** (from it into
-  the site's chest). Flip it in the Chests tab.
-- Link another job site's chest to connect sites: take from a Lumber site, send to a Smelting site.
+- Hauling crews no longer walk. They stay at the site's chest (the depot) and work the site's routes on a timer, and
+  each hauler's card shows a bar filling up as it works on a load.
+- A route goes from any chest to any other: with the Hauling site selected, sneak-right-click the chest to take from,
+  then the chest to deliver to. The depot's own chest, extra chests and other job sites' chests all work, so routes
+  connect sites (a Lumber site's chest to a Smelting site's chest, say).
+- Each route carries what the chest it delivers to allows (that chest's filter). The Routes tab lists them, with
+  the distance, a filter button and a button to remove one.
 - Longer routes take longer per load, and each extra hauler works its own loads, so more haulers move more.
-- Hauling links reach four times as far as Long Haul allows (`haulRouteReach` in the config). A route whose chest is
-  in an unloaded chunk waits instead of loading it.
+- Route chests may be four times as far from the depot as Long Haul allows (`haulRouteReach` in the config). A
+  route whose chest is in an unloaded chunk waits instead of loading it. With Remote Control, routes and haulers can
+  be set up without going back to the depot.
 
 ### Lumber
 - New skill, **Bone Meal** (Labour branch, up to level 3, after one level of Chopping): Lumber crews use bone meal

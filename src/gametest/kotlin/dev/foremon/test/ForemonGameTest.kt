@@ -367,6 +367,7 @@ class ForemonGameTest : FabricGameTest {
         helper.setBlock(BlockPos(6, 1, 2), Blocks.CHEST); helper.setBlock(BlockPos(6, 1, 5), Blocks.CHEST)
         val stone = helper.absolutePos(BlockPos(6, 1, 2)); val dirt = helper.absolutePos(BlockPos(6, 1, 5))
         s.links.add(stone); s.links.add(dirt)
+        s.routes.add(s.pos to stone); s.routes.add(s.pos to dirt)
         s.chest(stone).filter.apply { only = true; entries.add("minecraft:cobblestone"); changed() }
         s.chest(dirt).filter.apply { only = true; entries.add("minecraft:dirt"); changed() }
         put(helper, s, ItemStack(Items.DIRT, 6))
@@ -389,8 +390,9 @@ class ForemonGameTest : FabricGameTest {
         val smelter = site(helper, BlockPos(6, 1, 6), Job.SMELTING)
         put(helper, lumber, ItemStack(Items.OAK_LOG, 10))
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
-        depot.links.add(lumber.pos); depot.chest(lumber.pos).take = true
-        depot.links.add(smelter.pos)
+        // One route straight from the Lumber chest to the Smelting chest; the depot's own chest is not on the way.
+        depot.links.add(lumber.pos); depot.links.add(smelter.pos)
+        depot.routes.add(lumber.pos to smelter.pos)
         val w = worker(helper, depot, "pidgey")
         depot.active = true
         var farthest = 0.0
@@ -401,9 +403,31 @@ class ForemonGameTest : FabricGameTest {
             if (farthest > 4.5) fail("the hauler walked ${"%.1f".format(farthest)} blocks away; it should work from the depot")
             if (count(helper, smelter.pos, Items.OAK_LOG) != 10) fail("all 10 logs should end up in the Smelting site's chest")
             if (count(helper, lumber.pos, Items.OAK_LOG) + count(helper, depot.pos, Items.OAK_LOG) != 0) fail("logs were left behind on the way")
-            if (w.actions < 2) fail("each load should count as an action")
+            if (w.actions < 1) fail("each load should count as an action")
             cleanup(helper, depot); cleanup(helper, lumber); cleanup(helper, smelter)
         }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun twoSneakClicksMakeARoute(helper: GameTestHelper) {
+        setup(helper)
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        helper.setBlock(BlockPos(5, 1, 1), Blocks.CHEST); helper.setBlock(BlockPos(5, 1, 5), Blocks.CHEST)
+        val a = helper.absolutePos(BlockPos(5, 1, 1)); val b = helper.absolutePos(BlockPos(5, 1, 5))
+        val player = helper.makeMockServerPlayerInLevel()
+        val first = dev.foremon.net.Actions.routeClick(player, helper.level, depot, a, null)
+        if (first[0] != "foremon.msg.route_from") fail("the first click should start a route, got ${first[0]}")
+        val second = dev.foremon.net.Actions.routeClick(player, helper.level, depot, b, null)
+        if (second[0] != "foremon.msg.route_added") fail("the second click should finish the route, got ${second[0]}")
+        if (depot.routes != listOf(a to b)) fail("expected one route from A to B, got ${depot.routes}")
+        if (a !in depot.links || b !in depot.links) fail("both ends should become chests of the site")
+        dev.foremon.net.Actions.routeClick(player, helper.level, depot, b, null)
+        val again = dev.foremon.net.Actions.routeClick(player, helper.level, depot, b, null)
+        if (again[0] != "foremon.msg.route_cancelled") fail("clicking the same chest twice should cancel, got ${again[0]}")
+        depot.removeRoute(0)
+        if (depot.routes.isNotEmpty() || depot.links.isNotEmpty()) fail("removing the only route should also drop its chests")
+        SiteStore.of(helper.level).sites.remove(depot.pos)
+        helper.succeed()
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "bone_meal_on")

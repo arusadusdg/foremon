@@ -126,12 +126,19 @@ object Foremon : ModInitializer {
         if (s == null || (s.owner != player.uuid && !player.hasPermissions(2))) { tell(player, "foremon.hint.open_first"); return }
         val r = Workers.radius(level, s); val v = Workers.vertical(level, s)
 
+        // Hauling: sneak-click the chest items come from, then the chest they go to.
+        if (s.job == Job.HAULING && Inv.storage(level, pos) != null) {
+            val msg = Actions.routeClick(player, level, s, here?.pos ?: pos, here?.owner)
+            tell(player, msg[0], *msg.drop(1).toTypedArray())
+            store.setDirty()
+            return
+        }
         if (Inv.storage(level, pos) != null && here !== s) {
             val linkPos = here?.pos ?: pos
             if (s.removeLink(linkPos)) { tell(player, "foremon.msg.unlinked") }
             else {
                 val maxLinks = Rules.skill(player.server, s.owner, "linked_chests").toInt()
-                val reach = Rules.skill(player.server, s.owner, "long_haul") * (if (s.job == Job.HAULING) Config.a.haulRouteReach else 1.0)
+                val reach = Rules.skill(player.server, s.owner, "long_haul")
                 if (here != null && here.owner != s.owner) { tell(player, "foremon.fail.not_owner"); return }
                 // An extra chest becomes part of the site's storage, so only chests the player may use themselves can be added.
                 if (!dev.foremon.work.Protection.playerMayUse(level, player, linkPos)) { tell(player, "foremon.fail.chest_protected"); return }

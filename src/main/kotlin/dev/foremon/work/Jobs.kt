@@ -618,10 +618,10 @@ object Logistics : JobLogic() {
 // ============================================================================================ Hauling
 
 /**
- * Hauling: the crew stays at the site's chest and works its routes on a timer instead of walking. Each extra chest
- * either receives from the site's chest ("send") or is emptied into it ("take"). An extra chest can be another job
- * site's chest, which is how sites are connected: take from a Lumber site, send to a Smelting site. Every hauler
- * finishes loads on its own timer, so each one added moves that much more.
+ * Hauling: the crew stays at the site's chest (the depot) and works the site's routes on a timer instead of walking.
+ * A route goes from any chest to any other: the depot, an extra chest, another job site's chest. It carries what the
+ * chest it delivers to allows (that chest's filter). Every hauler finishes loads on its own timer, so each one added
+ * moves that much more, and a longer route takes longer per load.
  */
 object Courier : JobLogic() {
     // ponytail: one base trip plus one more per 6 blocks; fine-tune here if routes feel too fast or too slow.
@@ -632,27 +632,31 @@ object Courier : JobLogic() {
                         val to: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
                         val test: (ItemStack) -> Boolean)
 
-    /** The route through [link], or null if its chest is gone or in a chunk that is not loaded (never load one just to look). */
-    private fun route(c: Ctx, link: BlockPos): Route? {
-        if (!c.level.isLoaded(link)) return null
-        val other = Inv.storage(c.level, link) ?: return null
-        val info = c.s.chest(link)
-        return if (info.take) Route(other, c.storage) { c.s.filter.allows(it) && info.filter.allows(it) && Inv.fits(c.storage, it) }
-        else Route(c.storage, other) { c.s.filter.allows(it) && info.filter.allows(it) && Inv.fits(other, it) }
+    /** Route number [i], or null if a chest is gone, not the owner's to use, or in a chunk that is not loaded (never load one to look). */
+    private fun route(c: Ctx, i: Int): Route? {
+        val (from, to) = c.s.routes.getOrNull(i) ?: return null
+        for (p in listOf(from, to)) {
+            if (!c.level.isLoaded(p)) return null
+            if (p != c.s.pos && !Protection.ownerMayUse(c.level, c.s, p)) return null
+        }
+        val a = Inv.storage(c.level, from) ?: return null
+        val b = Inv.storage(c.level, to) ?: return null
+        val f = c.s.filterFor(to)
+        return Route(a, b) { f.allows(it) && Inv.fits(b, it) }
     }
 
     private fun ready(r: Route) = Inv.contains(r.from, r.test)
 
     override fun plan(c: Ctx): Step? {
-        if (c.s.links.isEmpty()) { c.status("foremon.status.link_chests"); return null }
-        val links = c.usableLinks
+        val routes = c.s.routes
+        if (routes.isEmpty()) { c.status("foremon.status.make_routes"); return null }
         var unloaded = false
-        for (i in links.indices) {
-            val link = links[(c.s.routeCursor + i) % links.size]
-            if (!c.level.isLoaded(link)) { unloaded = true; continue }
-            if (route(c, link)?.let(::ready) == true) {
-                c.s.routeCursor = (c.s.routeCursor + i + 1) % links.size
-                return Step(c.s.pos, Step.Kind.WORK, c.s.links.indexOf(link))
+        for (k in routes.indices) {
+            val i = (c.s.routeCursor + k) % routes.size
+            if (!c.level.isLoaded(routes[i].first) || !c.level.isLoaded(routes[i].second)) { unloaded = true; continue }
+            if (route(c, i)?.let(::ready) == true) {
+                c.s.routeCursor = (i + 1) % routes.size
+                return Step(c.s.pos, Step.Kind.WORK, i)
             }
         }
         c.status(if (unloaded) "foremon.status.route_unloaded" else "foremon.status.routes_idle")
@@ -661,24 +665,20 @@ object Courier : JobLogic() {
 
     /** A load takes longer the further it goes. */
     override fun hardness(c: Ctx, step: Step): Double {
-        val link = c.s.links.getOrNull(step.data) ?: return TRIP_BASE
-        return TRIP_BASE + kotlin.math.sqrt(link.distSqr(c.s.pos)) / BLOCKS_PER_TRIP
+        val (from, to) = c.s.routes.getOrNull(step.data) ?: return TRIP_BASE
+        return TRIP_BASE + kotlin.math.sqrt(from.distSqr(to)) / BLOCKS_PER_TRIP
     }
 
-    override fun stillValid(c: Ctx, step: Step): Boolean {
-        val link = c.s.links.getOrNull(step.data) ?: return false
-        return link in c.usableLinks && route(c, link)?.let(::ready) == true
-    }
+    override fun stillValid(c: Ctx, step: Step) = route(c, step.data)?.let(::ready) == true
 
     override fun act(c: Ctx, step: Step): Boolean {
-        val link = c.s.links.getOrNull(step.data) ?: return false
-        val r = route(c, link) ?: return false
+        val r = route(c, step.data) ?: return false
         // Heavy Load (level perk) and Pack Mule make every load bigger.
         val load = (c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt()
         val stack = Inv.extract(r.from, load, r.test)
         if (stack.isEmpty) return false
         val moved = stack.count
-        // What did not fit goes back where it came from; anything even that will not take, the hauler holds for the chest.
+        // What did not fit goes back where it came from; anything even that will not take, the hauler holds for the depot.
         val rest = Inv.insert(r.to, stack)
         if (!rest.isEmpty) Inv.insert(r.from, rest).let { if (!it.isEmpty) c.carry(it) }
         Net.fx(c.level, c.e, Net.FX_DELIVER, c.s.pos, 0)
