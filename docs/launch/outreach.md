@@ -11,9 +11,9 @@ Subject: Free Cobblemon addon for a video: Pokemon that actually work
 > Hi <name>,
 >
 > I loved your <specific video>. I made a free Cobblemon addon called Foremon, and I think it would
-> make a fun video: your Pokemon get real jobs. They fell whole trees, dig out mines, farm, smelt, and
-> build Litematica schematics block by block. A level 50 Machop takes down a tree, leaves and all, in one
-> swing.
+> make a fun video: your Pokemon build your Litematica schematics for you, block by block, and the crew you
+> pick matters. Fighting, Rock, Steel and Psychic types build fastest, and only a Pokemon that can fly can
+> finish the roof. They also fell whole trees, dig out mines, farm and smelt.
 >
 > 20-second clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
 > Download: https://modrinth.com/mod/foremon
@@ -30,8 +30,9 @@ Subject: Foremon, a Cobblemon worker addon, for <pack name>
 
 > Hi <name>,
 >
-> I play <pack name> and made an addon that fits it: Foremon lets players put their Pokemon to work on
-> chests (lumber, mining, farming, smelting, sorting, building from Litematica).
+> I play <pack name> and made an addon that fits it: in Foremon, players' Pokemon build Litematica
+> schematics for them, block by block, with the crew's types deciding who builds fastest. They also handle
+> lumber, mining, farming, smelting and sorting from chest job sites.
 >
 > For packs: every rule (which types suit which job, the whole skill tree, upkeep) is data-driven and
 > configurable, there are Relaxed/Normal/Hardcore presets, and `/foremon admin perf` shows its cost; 20
