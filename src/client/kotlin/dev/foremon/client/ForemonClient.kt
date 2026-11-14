@@ -24,7 +24,9 @@ object ForemonClient : ClientModInitializer {
         when (kind) {
             "site" -> {
                 val cur = mc.screen
-                if (cur is SiteScreen && cur.data.getLong("pos") == tag.getLong("pos")) cur.update(tag) else mc.setScreen(SiteScreen(tag))
+                if (cur is SiteScreen && cur.data.getLong("pos") == tag.getLong("pos")) cur.update(tag)
+                // A refresh (no party in it) that arrives after the screen was closed must not open it again.
+                else if (tag.contains("party")) mc.setScreen(SiteScreen(tag))
             }
             "board", "skills", "dex", "admin", "perks" -> {
                 val hub = mc.screen as? HubScreen ?: HubScreen().also { mc.setScreen(it) }

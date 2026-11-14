@@ -118,6 +118,7 @@ N = [
     node('speed_building', 'labour', 5, 40, 6, 0, per=.10, icon='minecraft:bricks'),
     node('speed_demolition', 'labour', 5, 40, 7, 0, per=.10, icon='minecraft:tnt'),
     node('tree_feller', 'labour', 1, 250, 1, 1, req={'speed_lumber': 2}, icon='minecraft:oak_log'),
+    node('bone_meal', 'labour', 3, 120, 1, 2, req={'speed_lumber': 1}, icon='minecraft:bone_meal'),
     node('deep_digging', 'labour', 2, 200, 2, 1, req={'speed_mining': 1}, growth=2.5, icon='minecraft:deepslate_diamond_ore'),
     node('vein_miner', 'labour', 1, 250, 2, 2, req={'speed_mining': 2}, icon='minecraft:raw_iron'),
     node('prospector', 'labour', 4, 80, 2, 3, per=.05, req={'speed_mining': 1}, icon='minecraft:emerald'),

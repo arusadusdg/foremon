@@ -83,6 +83,8 @@ object Actions {
         if (far && !admin && !Rules.has(player.server, player.uuid, "remote_control")) { Foremon.tell(player, "foremon.fail.too_far"); return }
 
         when (op) {
+            // The open site screen asks for fresh numbers (load progress, stamina) every half second.
+            "refresh" -> { sendSite(player, level, s, full = false); return }
             "open" -> selected[player.uuid] = GlobalPos.of(level.dimension(), pos)
             "pc" -> { sendPc(player, s, t.getInt("box")); return }
             "job" -> Job.of(t.getString("job"))?.let { if (s.job != it) { s.job = it; reset(s) } }
@@ -117,6 +119,7 @@ object Actions {
                 val ball = t.getString("ball").takeIf { it in BALLS } ?: BALLS[0]
                 if (chestPos == s.pos) s.ball = ball else if (chestPos in s.links) s.chest(chestPos).ball = ball
             }
+            "chest_take" -> BlockPos.of(t.getLong("chest")).takeIf { it in s.links }?.let { s.chest(it).take = !s.chest(it).take; reset(s) }
             "link_remove" -> s.removeLink(BlockPos.of(t.getLong("chest")))
             "clear_area" -> { s.cornerA = null; s.cornerB = null; reset(s) }
             "clear_links" -> { s.links.clear(); s.chests.clear() }
@@ -171,7 +174,8 @@ object Actions {
         }
     }
 
-    fun sendSite(player: ServerPlayer, level: ServerLevel, s: Site) {
+    /** [full] false leaves out the party: the twice-a-second refresh only needs what changes while working. */
+    fun sendSite(player: ServerPlayer, level: ServerLevel, s: Site, full: Boolean = true) {
         val server = player.server
         val t = CompoundTag()
         t.putLong("pos", s.pos.asLong()); t.putString("dim", level.dimension().location().toString())
@@ -188,13 +192,17 @@ object Actions {
         t.put("filter", ListTag().also { l -> s.filter.entries.forEach { l.add(StringTag.valueOf(it)) } })
         // Every chest of the site, the site's own chest first, with its ball and its filter.
         t.put("chests", ListTag().also { l ->
-            fun add(p: BlockPos, ball: String, f: dev.foremon.world.Filter, main: Boolean) = l.add(CompoundTag().also { c ->
+            fun add(p: BlockPos, ball: String, f: dev.foremon.world.Filter, main: Boolean, take: Boolean) = l.add(CompoundTag().also { c ->
                 c.putLong("pos", p.asLong()); c.putString("ball", ball); c.putBoolean("main", main); c.putBoolean("only", f.only)
                 c.put("entries", ListTag().also { el -> f.entries.forEach { el.add(StringTag.valueOf(it)) } })
-                c.putBoolean("present", dev.foremon.work.Inv.storage(level, p) != null)
+                // A far Hauling chest may be in an unloaded chunk: it is not missing, just not loaded, and must not be loaded to look.
+                val loaded = level.isLoaded(p)
+                c.putBoolean("present", !loaded || dev.foremon.work.Inv.storage(level, p) != null)
+                c.putBoolean("loaded", loaded); c.putBoolean("take", take)
+                c.putInt("dist", kotlin.math.sqrt(p.distSqr(s.pos)).toInt())
             })
-            add(s.pos, s.ball, s.filter, true)
-            for (link in s.links) { val info = s.chest(link); add(link, info.ball, info.filter, false) }
+            add(s.pos, s.ball, s.filter, true, false)
+            for (link in s.links) { val info = s.chest(link); add(link, info.ball, info.filter, false, info.take) }
         })
         Jobs.box(s)?.let { (lo, hi) -> t.putLong("lo", lo.asLong()); t.putLong("hi", hi.asLong()); t.putBoolean("areaDone", s.cornerB != null) }
         s.plan?.let { p -> t.put("plan", CompoundTag().also { c -> c.putString("name", p.name); c.putInt("size", p.size); c.putInt("index", p.index); c.putInt("placed", p.placed); c.putInt("skipped", p.skipped) }) }
@@ -207,10 +215,13 @@ object Actions {
                 c.putDouble("stamina", w.stamina); c.putDouble("maxStamina", Workers.maxStamina(level, s, w))
                 c.putBoolean("resting", w.restUntil > level.gameTime); c.putInt("emote", w.emote.ordinal)
                 c.putInt("carried", w.count(w.carried) + w.count(w.supplies)); c.putInt("actions", w.actions)
+                // How far along the current action is: the load bar of a hauler.
+                val working = w.step?.kind == dev.foremon.world.Step.Kind.WORK && w.need > 0
+                c.putFloat("progress", if (working) (w.progress.toFloat() / w.need).coerceIn(0f, 1f) else 0f)
                 l.add(c)
             }
         })
-        t.put("party", ListTag().also { l ->
+        if (full) t.put("party", ListTag().also { l ->
             if (s.owner == player.uuid) for (p in player.party()) {
                 val c = mon(p)
                 scores(Workers.profile(p), p, c, s.job)

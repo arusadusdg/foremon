@@ -238,6 +238,21 @@
       }
     },
     {
+      "id": "bone_meal",
+      "branch": "labour",
+      "max": 3,
+      "base_cost": 120,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:bone_meal",
+      "x": 1,
+      "y": 2,
+      "requires": {
+        "speed_lumber": 1
+      }
+    },
+    {
       "id": "deep_digging",
       "branch": "labour",
       "max": 2,

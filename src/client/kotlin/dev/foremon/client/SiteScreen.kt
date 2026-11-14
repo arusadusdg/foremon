@@ -14,10 +14,19 @@ import kotlin.math.min
 
 /** The menu of one job site: pick the job, manage the crew, set the filter, start and pause. */
 private val BALLS_CLIENT = dev.foremon.world.BALLS
+private val LOAD_COLOR = 0xFF5AB0FF.toInt()
 
 class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) {
     private var tab = 0
     private var confirmRemove = 0L
+    private var ticks = 0
+
+    /** While the site runs, ask for fresh numbers every half second so the load and stamina bars move. */
+    override fun tick() {
+        super.tick()
+        // Not on the PC tab: each update fetches the PC box again.
+        if (++ticks % 10 == 0 && data.getBoolean("active") && tab != 2) op("refresh")
+    }
 
     /** The chest whose filter the Filter tab edits: the site's own chest unless one was picked in the Chests tab. */
     private var filterChest: Long? = null
@@ -38,6 +47,8 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
 
     /** New data for this site from the server. The PC box is fetched again because who is busy may have changed. */
     fun update(tag: CompoundTag) {
+        // A refresh leaves out the party; keep the one we have.
+        if (!tag.contains("party")) data.get("party")?.let { tag.put("party", it) }
         data = tag
         if (tab == 2) { pc = null; pcAsked = -1 }
     }
@@ -213,7 +224,11 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
             g.drawString(font, font.plainSubstrByWidth(m.getString("name"), cardW - 40), cx + 36, cy + 3, 0xFFFFFFFF.toInt(), true)
             val lv = tr("foremon.gui.perk_lv", m.getInt("level")).string
             stars(g, cx + 36, cy + 13, m.getIntArray("stars").getOrElse(job.ordinal) { 0 })
-            if (upkeep) bar(g, cx + 36, cy + 24, cardW - 40, 3, m.getDouble("stamina") / m.getDouble("maxStamina").coerceAtLeast(1.0), if (m.getBoolean("resting")) Pal.WARN else Pal.GOOD)
+            if (job == Job.HAULING) {
+                // Haulers: stamina on top, and the load they are working on underneath, filling up as it goes.
+                if (upkeep) bar(g, cx + 36, cy + 22, cardW - 40, 2, m.getDouble("stamina") / m.getDouble("maxStamina").coerceAtLeast(1.0), if (m.getBoolean("resting")) Pal.WARN else Pal.GOOD)
+                bar(g, cx + 36, cy + 25, cardW - 40, 2, m.getFloat("progress").toDouble(), LOAD_COLOR)
+            } else if (upkeep) bar(g, cx + 36, cy + 24, cardW - 40, 3, m.getDouble("stamina") / m.getDouble("maxStamina").coerceAtLeast(1.0), if (m.getBoolean("resting")) Pal.WARN else Pal.GOOD)
             val mastery = m.getIntArray("mastery").getOrElse(job.ordinal) { 0 }
             // Level on the bottom line, right-aligned, so it never covers the stars or the name.
             g.drawString(font, lv, cx + cardW - 3 - font.width(lv), cy + 28, Pal.POKE_TEXT_SOFT, true)
@@ -270,9 +285,20 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
                 else if (entries == 0) tr("foremon.gui.chest_takes_all")
                 else tr(if (c.getBoolean("only")) "foremon.gui.chest_only_n" else "foremon.gui.chest_except_n", entries)
             val bw = 36
+            // Hauling: each extra chest is a route, sent to or taken from, with a button to flip it.
+            val route = job == Job.HAULING && !main
+            val tw = if (route) 40 else 0
             // The text stops before the buttons; the position is in the tooltip when it does not fit.
-            val textW = w - 23 - bw - (if (main) 6 else 24)
-            val line = summary.string + "  ${cpos.x} ${cpos.y} ${cpos.z}"
+            val textW = w - 23 - bw - tw - (if (main) 6 else 24)
+            val where = if (route) "  ${c.getInt("dist")}m" + (if (c.getBoolean("loaded")) "" else " · " + tr("foremon.gui.route_unloaded").string) else "  ${cpos.x} ${cpos.y} ${cpos.z}"
+            val line = summary.string + where
+            if (route) {
+                val take = c.getBoolean("take")
+                button(g, x + w - bw - 20 - tw, ry + 2, tw - 2, 16, tr(if (take) "foremon.gui.route_take" else "foremon.gui.route_send"),
+                    tooltip = lines(tr(if (take) "foremon.gui.route_take_tip" else "foremon.gui.route_send_tip"), muted(tr("foremon.gui.route_flip")))) {
+                    op("chest_take") { t -> t.putLong("chest", c.getLong("pos")) }
+                }
+            }
             g.drawString(font, font.plainSubstrByWidth(line, textW), x + 23, ry + 11, Pal.POKE_TEXT_SOFT, true)
             if (hover(x + 23, ry, textW, rowH - 2)) tip = lines(name, Component.literal(line))
             button(g, x + w - bw - (if (main) 2 else 20), ry + 2, bw, 16, tr("foremon.gui.tab_filter_short")) { filterChest = c.getLong("pos"); tab = 1 }

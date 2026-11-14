@@ -382,6 +382,67 @@ class ForemonGameTest : FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    fun haulingConnectsJobSitesWithoutWalking(helper: GameTestHelper) {
+        setup(helper)
+        // A Lumber site's chest full of logs, a Smelting site's empty chest, and a Hauling depot between them.
+        val lumber = site(helper, BlockPos(6, 1, 1), Job.LUMBER)
+        val smelter = site(helper, BlockPos(6, 1, 6), Job.SMELTING)
+        put(helper, lumber, ItemStack(Items.OAK_LOG, 10))
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        depot.links.add(lumber.pos); depot.chest(lumber.pos).take = true
+        depot.links.add(smelter.pos)
+        val w = worker(helper, depot, "pidgey")
+        depot.active = true
+        var farthest = 0.0
+        helper.onEachTick {
+            Workers.entity(helper.level, w)?.let { farthest = maxOf(farthest, kotlin.math.sqrt(it.distanceToSqr(depot.pos.x + 0.5, it.y, depot.pos.z + 0.5))) }
+        }
+        helper.succeedWhen {
+            if (farthest > 4.5) fail("the hauler walked ${"%.1f".format(farthest)} blocks away; it should work from the depot")
+            if (count(helper, smelter.pos, Items.OAK_LOG) != 10) fail("all 10 logs should end up in the Smelting site's chest")
+            if (count(helper, lumber.pos, Items.OAK_LOG) + count(helper, depot.pos, Items.OAK_LOG) != 0) fail("logs were left behind on the way")
+            if (w.actions < 2) fail("each load should count as an action")
+            cleanup(helper, depot); cleanup(helper, lumber); cleanup(helper, smelter)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "bone_meal_on")
+    fun boneMealSkillGrowsSaplings(helper: GameTestHelper) {
+        setup(helper)
+        withSkill(helper, "bone_meal", 3)
+        helper.setBlock(BlockPos(5, 0, 5), Blocks.DIRT)
+        helper.setBlock(BlockPos(5, 1, 5), Blocks.OAK_SAPLING)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        put(helper, s, ItemStack(Items.BONE_MEAL, 16))
+        worker(helper, s, "machop")
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.BONE_MEAL) >= 16) fail("no bone meal was used yet")
+            val grown = helper.getBlockState(BlockPos(5, 1, 5)).`is`(net.minecraft.tags.BlockTags.LOGS) || count(helper, s.pos, Items.OAK_LOG) > 0
+            if (!grown) fail("the sapling has not grown into a tree yet")
+            cleanup(helper, s)
+            withSkill(helper, "bone_meal", 0)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400, batch = "bone_meal_off")
+    fun withoutTheSkillSaplingsAreLeftAlone(helper: GameTestHelper) {
+        setup(helper)
+        withSkill(helper, "bone_meal", 0)
+        helper.setBlock(BlockPos(5, 0, 5), Blocks.DIRT)
+        helper.setBlock(BlockPos(5, 1, 5), Blocks.OAK_SAPLING)
+        val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
+        put(helper, s, ItemStack(Items.BONE_MEAL, 16))
+        worker(helper, s, "machop")
+        s.active = true
+        helper.runAfterDelay(300) {
+            if (count(helper, s.pos, Items.BONE_MEAL) != 16) fail("bone meal was used without the Bone Meal skill")
+            cleanup(helper, s)
+            helper.succeed()
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
     fun demolitionTakesTheAreaApart(helper: GameTestHelper) {
         setup(helper)
         for (x in 3..5) for (y in 1..2) helper.setBlock(BlockPos(x, y, 4), Blocks.OAK_PLANKS)

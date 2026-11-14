@@ -39,6 +39,8 @@ fun ballIndex(id: String): Int = BALLS.indexOf(id).coerceAtLeast(0)
 /** Settings of one extra chest: the ball it is marked with, and which items may be put in it. */
 class ChestInfo(var ball: String) {
     val filter = Filter()
+    /** Hauling only: the crew takes from this chest into the site's own chest, instead of sending to it. */
+    var take = false
 }
 
 /** "Only these" or "all except these" over blocks and items. Entries are ids ("minecraft:stone") or tags ("#c:ores"). */
@@ -170,6 +172,8 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     var rescanAt = 0L
     var validatedAt = 0L
     var notifiedAt = 0L
+    /** Hauling: the route to try first next time, so one busy route cannot starve the others. */
+    var routeCursor = 0
 
     fun save(reg: HolderLookup.Provider) = CompoundTag().also { t ->
         t.putLong("pos", pos.asLong()); t.putUUID("owner", owner); t.putString("ownerName", ownerName)
@@ -180,7 +184,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         t.putString("ball", ball)
         t.put("chests", ListTag().also { l ->
             for ((p, info) in chests) if (p in links) l.add(CompoundTag().also { c ->
-                c.putLong("pos", p.asLong()); c.putString("ball", info.ball); c.put("filter", info.filter.save())
+                c.putLong("pos", p.asLong()); c.putString("ball", info.ball); c.put("filter", info.filter.save()); c.putBoolean("take", info.take)
             })
         })
         plan?.let { t.put("plan", it.save()) }
@@ -215,6 +219,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                     c as CompoundTag
                     val info = ChestInfo(c.getString("ball").takeIf { it in BALLS } ?: BALLS[1])
                     info.filter.load(c.getCompound("filter"))
+                    info.take = c.getBoolean("take")
                     s.chests[BlockPos.of(c.getLong("pos"))] = info
                 }
                 if (t.contains("plan")) s.plan = Plan.load(t.getCompound("plan"))

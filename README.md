@@ -33,7 +33,7 @@ worker can never be lost.
 | Lumber | Fells natural trees, replants | Grass, Bug, Fighting, Steel; Cut fells whole trees |
 | Mining | Digs the marked area top-down | Ground, Rock, Steel; Dig takes whole veins |
 | Sorting | Tops up linked chests holding the same item | Psychic, Ghost |
-| Hauling | Moves items to linked chests | Flying, Fighting |
+| Hauling | Moves items between chests and job sites on a timer, from the depot | Flying, Fighting |
 | Farming | Crops, nether wart, berries, apricorns | Grass, Water, Bug; Harvest ability |
 | Smelting | Smelts the chest contents, no fuel | Needs fire: Fire type, fiery ability or fire move |
 | Building | Builds a Litematica placement from the chest | Fighting, Rock, Steel, Psychic |

@@ -35,7 +35,7 @@ How to read the boxes:
 - [x] **Lumber**: chop natural trees in range, replant saplings
 - [x] **Mining**: dig an area marked by sneak-clicking two corners with the whistle
 - [x] **Sorting**: move items to linked chests that already hold that item
-- [~] **Hauling**: move items to linked chests
+- [x] **Hauling**: routes between the depot chest and linked chests or other job sites, Send or Take, moved on a timer from the depot (no walking), faster with more haulers
 - [~] **Farming**: harvest and replant crops and nether wart
 - [~] **Berry and apricorn harvesting**: Cobblemon's own crops (part of the Farming job)
 - [x] **Smelting**: Pokemon with fire act as the furnace, no fuel

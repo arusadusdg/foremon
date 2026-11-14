@@ -61,6 +61,8 @@ class Ctx(
     fun skill(node: String) = Rules.skill(server, s.owner, node)
     fun has(node: String) = Rules.has(server, s.owner, node)
     fun capacity() = (profile.carry * (1.0 + skill("pack_mule"))).toInt().coerceAtLeast(1)
+    /** Lumber: bone meal in the site's chests, for the Bone Meal skill. Looked up at most once per tick. */
+    val hasBoneMeal: Boolean by lazy { Inv.contains(storage) { it.`is`(net.minecraft.world.item.Items.BONE_MEAL) } }
     fun carriedFull() = w.count(w.carried) >= capacity()
     fun can(cap: Capability) = cap in profile.capabilities
     fun status(key: String, arg: String = "") = Ticker.status(level, s, key, arg)
@@ -269,11 +271,11 @@ object Ticker {
         }
         if (w.progress % 20 == 0) animate(c)
         w.progress++
-        if (logic.breaks) c.level.destroyBlockProgress(e.id, step.pos, min(9, w.progress * 10 / w.need))
+        if (logic.cracks(step)) c.level.destroyBlockProgress(e.id, step.pos, min(9, w.progress * 10 / w.need))
         if (w.progress < w.need) return
 
         w.progress = 0
-        if (logic.breaks) c.level.destroyBlockProgress(e.id, step.pos, -1)
+        if (logic.cracks(step)) c.level.destroyBlockProgress(e.id, step.pos, -1)
         val done = logic.act(c, step)
         debug(c) { "acted at ${step.pos.toShortString()}, worked=$done" }
         if (!logic.repeats(c, step)) w.step = null
@@ -354,7 +356,7 @@ object Ticker {
         return m
     }
 
-    private val DONE_STATUSES = setOf("foremon.status.no_trees", "foremon.status.area_done", "foremon.status.build_done")
+    private val DONE_STATUSES = setOf("foremon.status.no_trees", "foremon.status.area_done", "foremon.status.build_done", "foremon.status.routes_idle")
 
     private inline fun debug(c: Ctx, msg: () -> String) {
         if (Foremon.DEBUG) Foremon.LOG.info("[worker {} at {}] {}", c.p.species.name, c.e.blockPosition().toShortString(), msg())

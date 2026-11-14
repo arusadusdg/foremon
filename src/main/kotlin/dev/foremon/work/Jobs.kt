@@ -39,6 +39,7 @@ import kotlin.math.min
 abstract class JobLogic {
     /** Shows block-crack progress on the target while working. */
     open val breaks = false
+    open fun cracks(step: Step) = breaks
     /** Picks up dropped items near the worker. */
     open val gathers = false
     /** The target can be worked from below at any height (a tree is felled from its base). */
@@ -184,7 +185,8 @@ object Jobs {
     fun of(job: Job): JobLogic = when (job) {
         Job.LUMBER -> Lumber
         Job.MINING -> Mining
-        Job.SORTING, Job.HAULING -> Logistics
+        Job.SORTING -> Logistics
+        Job.HAULING -> Courier
         Job.FARMING -> Farming
         Job.SMELTING -> Smelting
         Job.BUILDING -> Building
@@ -209,20 +211,46 @@ object Lumber : JobLogic() {
 
     private fun isLog(s: BlockState) = s.`is`(BlockTags.LOGS)
 
+    private const val SAPLING = 1
+
+    /** Bone Meal skill: a sapling worth growing, while there is bone meal in the chest to grow it with. */
+    private fun sapling(c: Ctx, state: BlockState) =
+        state.`is`(BlockTags.SAPLINGS) && state.block is net.minecraft.world.level.block.BonemealableBlock && c.hasBoneMeal && c.skill("bone_meal") >= 1
+
     /** A tree base: a log standing on soil. Whether it is a real tree is checked when a worker claims it. */
     override fun match(c: Ctx, pos: BlockPos, state: BlockState): Boolean =
-        isLog(state) && c.s.filter.allows(state) && c.level.getBlockState(pos.below()).`is`(BlockTags.DIRT)
+        (isLog(state) && c.s.filter.allows(state) && c.level.getBlockState(pos.below()).`is`(BlockTags.DIRT)) || sapling(c, state)
 
     override fun emptyPass(c: Ctx) = c.status("foremon.status.no_trees")
+
+    override fun cracks(step: Step) = step.data != SAPLING
 
     override fun plan(c: Ctx): Step? {
         if (c.carriedFull()) return Step(c.s.pos, Step.Kind.CHEST)
         var tries = 6
         while (tries-- > 0) {
             val p = take(c) ?: return null
+            if (sapling(c, c.level.getBlockState(p))) return Step(p, Step.Kind.WORK, SAPLING)
             if (natural(c, p)) return Step(p, Step.Kind.WORK)
         }
         return null
+    }
+
+    /**
+     * Bone Meal skill: one bone meal from the chest, and each level of the skill makes it count once more.
+     * Growing a tree places blocks, so the owner must be allowed to build here.
+     */
+    private fun grow(c: Ctx, pos: BlockPos): Boolean {
+        if (!Protection.canPlace(c.level, c.s, pos)) { c.s.skip[pos] = c.now + 6000; return false }
+        if (Inv.extract(c.storage, Items.BONE_MEAL, 1).isEmpty) return false
+        for (i in 0 until c.skill("bone_meal").toInt().coerceAtLeast(1)) {
+            val st = c.level.getBlockState(pos)
+            val b = st.block as? net.minecraft.world.level.block.BonemealableBlock ?: break
+            if (!b.isValidBonemealTarget(c.level, pos, st)) break
+            if (b.isBonemealSuccess(c.level, c.level.random, pos, st)) b.performBonemeal(c.level, c.level.random, pos, st)
+        }
+        c.level.levelEvent(1505, pos, 15) // the bone meal sparkle and sound
+        return true
     }
 
     /** Only real trees: the trunk must end in leaves that no player placed. Protects log cabins. */
@@ -252,10 +280,13 @@ object Lumber : JobLogic() {
         return seen.toList()
     }
 
-    override fun stillValid(c: Ctx, step: Step) = isLog(c.level.getBlockState(step.pos))
-    override fun repeats(c: Ctx, step: Step) = isLog(c.level.getBlockState(step.pos))
+    override fun stillValid(c: Ctx, step: Step) =
+        if (step.data == SAPLING) sapling(c, c.level.getBlockState(step.pos)) else isLog(c.level.getBlockState(step.pos))
+    override fun repeats(c: Ctx, step: Step) = step.data != SAPLING && isLog(c.level.getBlockState(step.pos))
+    override fun hardness(c: Ctx, step: Step) = if (step.data == SAPLING) 0.4 else 1.0
 
     override fun act(c: Ctx, step: Step): Boolean {
+        if (step.data == SAPLING) return grow(c, step.pos)
         val base = step.pos
         val baseState = c.level.getBlockState(base)
         if (!isLog(baseState)) return false
@@ -582,6 +613,77 @@ object Logistics : JobLogic() {
 
     // This job has no WORK step: the ticker counts each delivery as the finished action.
     override fun act(c: Ctx, step: Step) = false
+}
+
+// ============================================================================================ Hauling
+
+/**
+ * Hauling: the crew stays at the site's chest and works its routes on a timer instead of walking. Each extra chest
+ * either receives from the site's chest ("send") or is emptied into it ("take"). An extra chest can be another job
+ * site's chest, which is how sites are connected: take from a Lumber site, send to a Smelting site. Every hauler
+ * finishes loads on its own timer, so each one added moves that much more.
+ */
+object Courier : JobLogic() {
+    // ponytail: one base trip plus one more per 6 blocks; fine-tune here if routes feel too fast or too slow.
+    private const val TRIP_BASE = 3.0
+    private const val BLOCKS_PER_TRIP = 6.0
+
+    private class Route(val from: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
+                        val to: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
+                        val test: (ItemStack) -> Boolean)
+
+    /** The route through [link], or null if its chest is gone or in a chunk that is not loaded (never load one just to look). */
+    private fun route(c: Ctx, link: BlockPos): Route? {
+        if (!c.level.isLoaded(link)) return null
+        val other = Inv.storage(c.level, link) ?: return null
+        val info = c.s.chest(link)
+        return if (info.take) Route(other, c.storage) { c.s.filter.allows(it) && info.filter.allows(it) && Inv.fits(c.storage, it) }
+        else Route(c.storage, other) { c.s.filter.allows(it) && info.filter.allows(it) && Inv.fits(other, it) }
+    }
+
+    private fun ready(r: Route) = Inv.contains(r.from, r.test)
+
+    override fun plan(c: Ctx): Step? {
+        if (c.s.links.isEmpty()) { c.status("foremon.status.link_chests"); return null }
+        val links = c.usableLinks
+        var unloaded = false
+        for (i in links.indices) {
+            val link = links[(c.s.routeCursor + i) % links.size]
+            if (!c.level.isLoaded(link)) { unloaded = true; continue }
+            if (route(c, link)?.let(::ready) == true) {
+                c.s.routeCursor = (c.s.routeCursor + i + 1) % links.size
+                return Step(c.s.pos, Step.Kind.WORK, c.s.links.indexOf(link))
+            }
+        }
+        c.status(if (unloaded) "foremon.status.route_unloaded" else "foremon.status.routes_idle")
+        return null
+    }
+
+    /** A load takes longer the further it goes. */
+    override fun hardness(c: Ctx, step: Step): Double {
+        val link = c.s.links.getOrNull(step.data) ?: return TRIP_BASE
+        return TRIP_BASE + kotlin.math.sqrt(link.distSqr(c.s.pos)) / BLOCKS_PER_TRIP
+    }
+
+    override fun stillValid(c: Ctx, step: Step): Boolean {
+        val link = c.s.links.getOrNull(step.data) ?: return false
+        return link in c.usableLinks && route(c, link)?.let(::ready) == true
+    }
+
+    override fun act(c: Ctx, step: Step): Boolean {
+        val link = c.s.links.getOrNull(step.data) ?: return false
+        val r = route(c, link) ?: return false
+        // Heavy Load (level perk) and Pack Mule make every load bigger.
+        val load = (c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt()
+        val stack = Inv.extract(r.from, load, r.test)
+        if (stack.isEmpty) return false
+        val moved = stack.count
+        // What did not fit goes back where it came from; anything even that will not take, the hauler holds for the chest.
+        val rest = Inv.insert(r.to, stack)
+        if (!rest.isEmpty) Inv.insert(r.from, rest).let { if (!it.isEmpty) c.carry(it) }
+        Net.fx(c.level, c.e, Net.FX_DELIVER, c.s.pos, 0)
+        return rest.count < moved
+    }
 }
 
 // ============================================================================================ Smelting

@@ -131,7 +131,7 @@ object Foremon : ModInitializer {
             if (s.removeLink(linkPos)) { tell(player, "foremon.msg.unlinked") }
             else {
                 val maxLinks = Rules.skill(player.server, s.owner, "linked_chests").toInt()
-                val reach = Rules.skill(player.server, s.owner, "long_haul")
+                val reach = Rules.skill(player.server, s.owner, "long_haul") * (if (s.job == Job.HAULING) Config.a.haulRouteReach else 1.0)
                 if (here != null && here.owner != s.owner) { tell(player, "foremon.fail.not_owner"); return }
                 // An extra chest becomes part of the site's storage, so only chests the player may use themselves can be added.
                 if (!dev.foremon.work.Protection.playerMayUse(level, player, linkPos)) { tell(player, "foremon.fail.chest_protected"); return }
