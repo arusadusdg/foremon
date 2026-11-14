@@ -135,8 +135,8 @@ object Net {
     private val lastHaul = HashMap<java.util.UUID, Pair<String, HashMap<Long, Int>>>()
 
     /**
-     * Twice a second each player near a running Hauling depot is sent its board (every hauler, what it carries and when
-     * its load started and ends, plus the total moved), only when that changed. The client fills the bars in by itself.
+     * Twice a second each player near a running Hauling depot is sent its line (when each load started and how long it
+     * takes, plus the total hauled), only when that changed. The client counts the percent up by itself.
      */
     fun syncHaul(level: ServerLevel) {
         if (level.gameTime % 10 != 0L) return
@@ -166,19 +166,9 @@ object Net {
 
     private fun board(s: dev.foremon.world.Site) = CompoundTag().also { t ->
         t.putLong("pos", s.pos.asLong()); t.putLong("total", s.hauled)
-        t.put("workers", net.minecraft.nbt.ListTag().also { l ->
-            for (w in s.workers) {
-                val p = w.pokemon ?: continue
-                l.add(CompoundTag().also { c ->
-                    c.putString("species", p.species.resourceIdentifier.toString())
-                    c.put("aspects", net.minecraft.nbt.ListTag().also { a -> p.aspects.forEach { a.add(net.minecraft.nbt.StringTag.valueOf(it)) } })
-                    val path = w.path
-                    if (path != null && w.step?.kind == dev.foremon.world.Step.Kind.WORK) {
-                        c.putLong("start", w.loadStart); c.putInt("need", w.need); c.putBoolean("away", path.isEmpty())
-                        if (!w.hauling.isEmpty) { c.putString("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(w.hauling.item).toString()); c.putInt("count", w.hauling.count) }
-                    }
-                })
-            }
+        t.put("loads", net.minecraft.nbt.ListTag().also { l ->
+            for (w in s.workers) if (w.path != null && w.step?.kind == dev.foremon.world.Step.Kind.WORK)
+                l.add(CompoundTag().also { c -> c.putLong("start", w.loadStart); c.putInt("need", w.need) })
         })
     }
 
