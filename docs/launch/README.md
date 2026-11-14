@@ -32,8 +32,9 @@ and posting for you.
 ## Things to say everywhere
 
 - It is **v1**: ask people to report bugs on GitHub issues.
-- It was **developed with an AI coding assistant**. Say so plainly on every page and post (the texts here
-  already do).
+- It was **developed with an AI coding assistant**. Disclose it on every page and post. Where the site has an AI
+  toggle (Modrinth's "Contains AI-generated content", TikTok's "AI-generated content" switch in the upload form),
+  use the toggle and leave it out of the text. Where there is none (CurseForge, GitHub, Reddit, Beacons), say it in the text.
 - Stamina and food can be switched off in the settings, for players who dislike upkeep.
 - Requirements: Minecraft 1.21.1, Fabric, Fabric API, Fabric Language Kotlin, Cobblemon 1.7.3 or newer.
   Litematica is optional.

@@ -48,10 +48,10 @@ What is in it:
 3. Time-lapse: three Pokemon build a real village house from a Litematica schematic
 4. End card: "Foremon, free on Modrinth and CurseForge", with "made with AI assistance"
 
-Caption:
+Caption (switch on "AI-generated content" under "Show more" in the upload form instead of writing it in the caption):
 
 > My Pokemon finally got jobs. Machop fells whole trees, the crew builds my Litematica schematics.
-> Free mod, link in bio. (Made with AI assistance.) #cobblemon #minecraft #pokemon #minecraftmods #fabricmc
+> Free mod, link in bio. #cobblemon #minecraft #pokemon #minecraftmods #fabricmc
 
 ## Next videos (ideas)
 

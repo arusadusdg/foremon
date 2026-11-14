@@ -8,7 +8,7 @@ Create at https://modrinth.com/dashboard/projects (New project).
 |---|---|
 | Name | Foremon |
 | URL (slug) | `foremon` (checked free on 2026-11-13) |
-| Summary | Put your Cobblemon to work: Pokemon chop, mine, farm, smelt, sort and build your Litematica schematics for real. Developed with AI assistance. |
+| Summary | Put your Cobblemon to work: Pokemon chop, mine, farm, smelt, sort and build your Litematica schematics for real. |
 | Project type | Mod |
 | Visibility | Public (it goes into Modrinth's review first) |
 | Categories | Utility, Management, Game Mechanics |
@@ -20,8 +20,8 @@ Create at https://modrinth.com/dashboard/projects (New project).
 ## Description
 
 Paste the whole of [../MODPAGE.md](../MODPAGE.md). Put `docs/media/timber.gif` at the very top (Modrinth
-lets you upload images in the gallery and use them in the description). The AI disclosure box is
-already in the text, right under the title.
+lets you upload images in the gallery and use them in the description). Delete the "Made with AI" box from the
+text: Modrinth has its own AI toggle (Settings > Disclosures), which shows the label on the page.
 
 Add at the end:
 
@@ -53,4 +53,5 @@ Upload, with these titles:
 | Dependencies | Required: Fabric API, Fabric Language Kotlin, Cobblemon. Optional: Litematica |
 | Changelog | Paste the 1.0.0 section of [../../CHANGELOG.md](../../CHANGELOG.md) |
 
-Modrinth's content rules ask that AI-generated content is disclosed; the summary and the description both do.
+Modrinth's content rules ask that AI-generated content is disclosed: switch on "Contains AI-generated content"
+(Code, Assets, Text) under Settings > Disclosures. Don't repeat it in the summary, description or changelog.
