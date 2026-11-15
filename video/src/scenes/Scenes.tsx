@@ -6,6 +6,8 @@ import { Card, Chip, Column, Counter, Entrance, Footage, KenBurns, Label, SceneE
 import footage from "../footage.json";
 
 export type Word = { w: string; start: number; end: number };
+/** The hook shows the first part of the house build behind its text; the House scene carries on from this frame. */
+export const HOUSE_SPLIT = 150;
 /** [dur]: scene length in frames. [words]: the voice-over's words (seconds from [lead], the frame the voice starts). */
 export type SceneProps = { dur: number; words?: Word[]; lead?: number };
 
@@ -64,9 +66,13 @@ export const Hook: React.FC<SceneProps> = ({ dur, words = [], lead = 0 }) => {
   const sx = Math.sin(frame * 2.7) * 24 * shake, sy = Math.cos(frame * 3.1) * 18 * shake;
   // "HEY, LISTEN!" makes room when "TEAM ROCKET" lands.
   const up = spring({ frame: frame - team + 6, fps, config: theme.spring.snappy });
-  const pulse = 0.35 + 0.25 * Math.max(0, Math.sin(frame / 3));
+  const pulse = 0.25 + 0.2 * Math.max(0, Math.sin(frame / 3));
   return (
     <SceneExit dur={dur}>
+      {/* Gameplay from the very first frame, dimmed so the words read on top. */}
+      <AbsoluteFill style={{ filter: "brightness(0.42) saturate(1.15)" }}>
+        <Footage dir="house" first={0} last={HOUSE_SPLIT} dur={dur} pos="55% 50%" zoomTo={1.15} />
+      </AbsoluteFill>
       <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 45%, ${theme.colors.accent}, transparent 70%)`, opacity: pulse }} />
       <AbsoluteFill style={{ transform: `translate(${sx}px, ${sy}px)` }}>
         {/* HEY, / LISTEN! stacked big in the middle, then shrinking up out of the way of TEAM ROCKET. */}
@@ -90,7 +96,7 @@ export const Hook: React.FC<SceneProps> = ({ dur, words = [], lead = 0 }) => {
       <AbsoluteFill style={{ background: "#FFFFFF", opacity: flash, pointerEvents: "none" }} />
       <Sfx at={hey - 1} name="hit" volume={0.45} />
       <Sfx at={team - 1} name="hit" volume={0.45} />
-      <Sfx at={dur - s(1.6)} name="riser" volume={0.5} />
+      <Sfx at={dur - s(1.0)} name="riser" volume={0.5} />
     </SceneExit>
   );
 };
@@ -100,7 +106,7 @@ export const House: React.FC<SceneProps> = ({ dur }) => {
   return (
     <SceneExit dur={dur}>
       <Card>
-        <Footage dir="house" first={0} last={footage.house} dur={dur} pos="55% 50%" zoomTo={1.08} />
+        <Footage dir="house" first={HOUSE_SPLIT} last={footage.house} dur={dur} pos="55% 50%" zoomTo={1.08} />
         <CardCaption text="Block by block, from a Litematica plan" delay={s(2.4)} />
       </Card>
       <Column top={theme.layout.safeTop} gap={20}>

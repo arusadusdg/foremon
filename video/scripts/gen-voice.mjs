@@ -61,7 +61,8 @@ for (const { scene, text, model = "eleven_multilingual_v2", settings, fallback }
     if (/\s/.test(ch)) { if (cur) words.push(cur); cur = null; return; }
     if (!cur) cur = { w: "", start: alignment.character_start_times_seconds[i], end: 0 };
     cur.w += ch;
-    cur.end = alignment.character_end_times_seconds[i];
+    // Ends at its last letter or digit: ElevenLabs stretches trailing punctuation over the pause that follows.
+    if (/[\p{L}\p{N}]/u.test(ch) || !cur.end) cur.end = alignment.character_end_times_seconds[i];
   });
   if (cur) words.push(cur);
   // Audio tags like [shouting] are directions, not words.

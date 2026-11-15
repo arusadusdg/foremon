@@ -83,7 +83,7 @@ writeFileSync(join(OUT, "pop.wav"), wav(fx(0.12, (ts, p) => { ph += (2 * Math.PI
 writeFileSync(join(OUT, "tick.wav"), wav(fx(0.05, (ts, p) => Math.sin(2 * Math.PI * 1800 * ts) * Math.exp(-p * 14)), 0.5));
 writeFileSync(join(OUT, "hit.wav"), wav(fx(0.5, (ts, p) => Math.sin(2 * Math.PI * (88 - 30 * p) * ts) * Math.exp(-p * 6) + rnd() * Math.exp(-p * 30) * 0.4), 0.95));
 // riser into the drop after the hook: rising filtered noise and pitch
-writeFileSync(join(OUT, "riser.wav"), wav(fx(1.6, (ts, p) => {
+writeFileSync(join(OUT, "riser.wav"), wav(fx(1.0, (ts, p) => {
   lp += (0.02 + 0.5 * p * p) * (rnd() * 2 - lp);
   return (lp * 0.8 + Math.sin(2 * Math.PI * (200 + 900 * p * p) * ts) * 0.15) * p * p;
 }), 0.7));
