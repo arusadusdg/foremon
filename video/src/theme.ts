@@ -33,7 +33,7 @@ export const theme = {
     snappy: { damping: 14, stiffness: 160, mass: 0.6 },
     smooth: { damping: 20, stiffness: 90, mass: 1 },
     bouncy: { damping: 11, stiffness: 170, mass: 0.7 },
-    counter: { damping: 30, stiffness: 60, mass: 1 },
+    counter: { damping: 26, stiffness: 260, mass: 0.6 }, // snaps to its number in about 0.3 s
   },
   // 9:16 layout: platform UI covers the top and bottom, so text stays between these lines.
   layout: { safeTop: 230, safeBottom: 1690, side: 60, cardX: 40, cardY: 600, cardW: 1000, cardH: 1000 },

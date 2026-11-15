@@ -54,12 +54,14 @@
         "start": 3.392,
         "end": 3.92
       }
-    ]
+    ],
+    "text": "[shouting] HEY, LISTEN! Team Rocket doesn't want you to know this..."
   },
   {
     "scene": "House",
+    "text": "Your Pokémon build your house for you.",
     "file": "vo/House.mp3",
-    "duration": 5.619,
+    "duration": 2.508,
     "words": [
       {
         "w": "Your",
@@ -68,85 +70,51 @@
       },
       {
         "w": "Pokémon",
-        "start": 0.29,
-        "end": 0.824
-      },
-      {
-        "w": "can",
-        "start": 0.894,
-        "end": 1.033
+        "start": 0.279,
+        "end": 0.859
       },
       {
         "w": "build",
-        "start": 1.091,
-        "end": 1.312
+        "start": 0.929,
+        "end": 1.184
       },
       {
         "w": "your",
-        "start": 1.37,
-        "end": 1.521
+        "start": 1.231,
+        "end": 1.37
       },
       {
-        "w": "whole",
-        "start": 1.579,
-        "end": 1.869
+        "w": "house",
+        "start": 1.428,
+        "end": 1.695
       },
       {
-        "w": "house.",
-        "start": 1.927,
-        "end": 2.473
+        "w": "for",
+        "start": 1.753,
+        "end": 1.892
       },
       {
-        "w": "Block",
-        "start": 2.682,
-        "end": 2.984
-      },
-      {
-        "w": "by",
-        "start": 3.053,
-        "end": 3.204
-      },
-      {
-        "w": "block,",
-        "start": 3.274,
-        "end": 3.715
-      },
-      {
-        "w": "from",
-        "start": 3.762,
-        "end": 3.947
-      },
-      {
-        "w": "a",
-        "start": 3.994,
-        "end": 4.017
-      },
-      {
-        "w": "Litematica",
-        "start": 4.087,
-        "end": 4.818
-      },
-      {
-        "w": "plan.",
-        "start": 4.876,
-        "end": 5.619
+        "w": "you.",
+        "start": 1.962,
+        "end": 2.148
       }
     ]
   },
   {
     "scene": "Crew",
+    "text": "Types pick the crew.",
     "file": "vo/Crew.mp3",
-    "duration": 5.108,
+    "duration": 1.533,
     "words": [
       {
         "w": "Types",
         "start": 0,
-        "end": 0.406
+        "end": 0.395
       },
       {
         "w": "pick",
-        "start": 0.476,
-        "end": 0.65
+        "start": 0.464,
+        "end": 0.639
       },
       {
         "w": "the",
@@ -155,288 +123,105 @@
       },
       {
         "w": "crew.",
-        "start": 0.836,
-        "end": 1.37
-      },
-      {
-        "w": "Fighters",
-        "start": 1.544,
-        "end": 2.02
-      },
-      {
-        "w": "build",
-        "start": 2.078,
-        "end": 2.357
-      },
-      {
-        "w": "fastest,",
-        "start": 2.426,
-        "end": 3.146
-      },
-      {
-        "w": "flyers",
-        "start": 3.32,
-        "end": 3.924
-      },
-      {
-        "w": "do",
-        "start": 3.994,
-        "end": 4.133
-      },
-      {
-        "w": "the",
-        "start": 4.203,
-        "end": 4.284
-      },
-      {
-        "w": "roof.",
-        "start": 4.354,
-        "end": 5.108
-      }
-    ]
-  },
-  {
-    "scene": "Timber",
-    "file": "vo/Timber.mp3",
-    "duration": 3.901,
-    "words": [
-      {
-        "w": "At",
-        "start": 0,
-        "end": 0.151
-      },
-      {
-        "w": "level",
-        "start": 0.209,
-        "end": 0.441
-      },
-      {
-        "w": "fifty,",
-        "start": 0.499,
-        "end": 0.917
-      },
-      {
-        "w": "Machop",
-        "start": 0.975,
-        "end": 1.393
-      },
-      {
-        "w": "fells",
-        "start": 1.463,
-        "end": 1.788
-      },
-      {
-        "w": "a",
-        "start": 1.846,
-        "end": 1.881
-      },
-      {
-        "w": "whole",
-        "start": 1.95,
-        "end": 2.252
-      },
-      {
-        "w": "tree",
-        "start": 2.287,
-        "end": 2.624
-      },
-      {
-        "w": "in",
-        "start": 2.682,
-        "end": 2.786
-      },
-      {
-        "w": "one",
-        "start": 2.868,
-        "end": 3.065
-      },
-      {
-        "w": "swing.",
-        "start": 3.111,
-        "end": 3.901
+        "start": 0.824,
+        "end": 1.149
       }
     ]
   },
   {
     "scene": "Jobs",
+    "text": "Ten jobs.",
     "file": "vo/Jobs.mp3",
-    "duration": 6.362,
+    "duration": 1.115,
     "words": [
       {
         "w": "Ten",
         "start": 0,
-        "end": 0.279
+        "end": 0.267
       },
       {
-        "w": "jobs:",
-        "start": 0.348,
-        "end": 0.906
-      },
-      {
-        "w": "lumber,",
-        "start": 1.022,
-        "end": 1.544
-      },
-      {
-        "w": "mining,",
-        "start": 1.602,
-        "end": 2.299
-      },
-      {
-        "w": "farming,",
-        "start": 2.473,
-        "end": 3.123
-      },
-      {
-        "w": "building,",
-        "start": 3.158,
-        "end": 3.831
-      },
-      {
-        "w": "guarding,",
-        "start": 3.959,
-        "end": 4.586
-      },
-      {
-        "w": "crafting",
-        "start": 4.656,
-        "end": 5.236
-      },
-      {
-        "w": "and",
-        "start": 5.329,
-        "end": 5.526
-      },
-      {
-        "w": "more.",
-        "start": 5.619,
-        "end": 6.362
+        "w": "jobs.",
+        "start": 0.36,
+        "end": 0.766
       }
     ]
   },
   {
     "scene": "Guard",
+    "text": "They even guard your base.",
     "file": "vo/Guard.mp3",
-    "duration": 2.879,
+    "duration": 1.486,
     "words": [
       {
-        "w": "Draw",
+        "w": "They",
         "start": 0,
-        "end": 0.313
+        "end": 0.186
       },
       {
-        "w": "a",
-        "start": 0.36,
-        "end": 0.395
+        "w": "even",
+        "start": 0.232,
+        "end": 0.453
       },
       {
-        "w": "patrol,",
-        "start": 0.441,
-        "end": 1.033
-      },
-      {
-        "w": "and",
-        "start": 1.057,
-        "end": 1.173
+        "w": "guard",
+        "start": 0.522,
+        "end": 0.789
       },
       {
         "w": "your",
-        "start": 1.231,
-        "end": 1.37
+        "start": 0.836,
+        "end": 0.975
       },
       {
-        "w": "guards",
-        "start": 1.428,
-        "end": 1.765
-      },
-      {
-        "w": "keep",
-        "start": 1.823,
-        "end": 2.009
-      },
-      {
-        "w": "it",
-        "start": 2.067,
-        "end": 2.148
-      },
-      {
-        "w": "safe.",
-        "start": 2.206,
-        "end": 2.879
+        "w": "base.",
+        "start": 1.033,
+        "end": 1.393
       }
     ]
   },
   {
     "scene": "Skills",
+    "text": "Forty-nine upgrades.",
     "file": "vo/Skills.mp3",
-    "duration": 3.344,
+    "duration": 1.3,
     "words": [
       {
-        "w": "Unlock",
+        "w": "Forty-nine",
         "start": 0,
-        "end": 0.418
+        "end": 0.546
       },
       {
-        "w": "forty-nine",
-        "start": 0.511,
-        "end": 1.196
-      },
-      {
-        "w": "upgrades",
-        "start": 1.242,
-        "end": 1.869
-      },
-      {
-        "w": "as",
-        "start": 1.927,
-        "end": 2.055
-      },
-      {
-        "w": "your",
-        "start": 2.113,
-        "end": 2.252
-      },
-      {
-        "w": "crew",
-        "start": 2.31,
-        "end": 2.566
-      },
-      {
-        "w": "grows.",
-        "start": 2.635,
-        "end": 3.344
+        "w": "upgrades.",
+        "start": 0.58,
+        "end": 1.126
       }
     ]
   },
   {
     "scene": "Cta",
+    "text": "Foremon. Free on CurseForge.",
     "file": "vo/Cta.mp3",
-    "duration": 2.601,
+    "duration": 2.647,
     "words": [
       {
         "w": "Foremon.",
         "start": 0,
-        "end": 0.65
+        "end": 0.592
       },
       {
-        "w": "It's",
-        "start": 0.894,
-        "end": 1.08
-      },
-      {
-        "w": "free",
-        "start": 1.138,
-        "end": 1.428
+        "w": "Free",
+        "start": 0.998,
+        "end": 1.254
       },
       {
         "w": "on",
-        "start": 1.498,
-        "end": 1.614
+        "start": 1.312,
+        "end": 1.405
       },
       {
         "w": "CurseForge.",
-        "start": 1.695,
-        "end": 2.601
+        "start": 1.486,
+        "end": 2.31
       }
     ]
   }

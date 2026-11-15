@@ -50,7 +50,7 @@ export const WordReveal: React.FC<{ text: string; delay?: number; per?: number; 
 export const SceneExit: React.FC<{ dur: number; children: React.ReactNode }> = ({ dur, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const len = Math.round(fps * 0.33);
+  const len = Math.max(3, Math.round(fps * 0.1)); // brainrot pace: a 0.1 s exit, the cut does the rest
   const range = [dur - len, dur - 1];
   const y = interpolate(frame, range, [0, -60], { ...clamp, easing: theme.ease.in });
   const o = interpolate(frame, range, [1, 0], { ...clamp, easing: theme.ease.in });
@@ -147,3 +147,49 @@ export const Column: React.FC<{ top: number; gap?: number; children: React.React
   <div style={{ position: "absolute", top, left: theme.layout.side, right: theme.layout.side, display: "flex", flexDirection: "column",
     alignItems: "center", gap }}>{children}</div>
 );
+
+/** Zoom punch on a cut: the shot starts slightly too big and snaps into place in a few frames. */
+export const Punch: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = spring({ frame, fps, config: { damping: 18, stiffness: 320, mass: 0.5 } });
+  return <AbsoluteFill style={{ transform: `scale(${interpolate(p, [0, 1], [1.14, 1], clamp)})` }}>{children}</AbsoluteFill>;
+};
+
+export type TimedWord = { w: string; at: number }; // at: frame in the composition
+
+/**
+ * TikTok-style captions: one or two words at a time, huge, white with a black outline, the word being said in gold
+ * and popping in on the frame it is spoken.
+ */
+export const Captions: React.FC<{ words: TimedWord[] }> = ({ words }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  // Chunks of up to two words, broken after punctuation.
+  const chunks: TimedWord[][] = [];
+  for (const w of words) {
+    const last = chunks[chunks.length - 1];
+    if (last && last.length < 2 && !/[.,!?:]$/.test(last[last.length - 1].w) && w.at - last[last.length - 1].at < fps * 0.6) last.push(w);
+    else chunks.push([w]);
+  }
+  const i = chunks.findIndex((c, k) => frame >= c[0].at && (k === chunks.length - 1 || frame < chunks[k + 1][0].at));
+  const chunk = chunks[i];
+  if (!chunk || frame > chunk[chunk.length - 1].at + fps * 0.7) return null;
+  return (
+    <div style={{ position: "absolute", top: 1120, left: theme.layout.side, right: theme.layout.side, display: "flex", flexWrap: "wrap",
+      justifyContent: "center", columnGap: 28, pointerEvents: "none" }}>
+      {chunk.map((w, k) => {
+        const p = spring({ frame: frame - w.at, fps, config: { damping: 12, stiffness: 300, mass: 0.5 } });
+        const said = frame >= w.at && (k === chunk.length - 1 || frame < chunk[k + 1].at);
+        return (
+          <span key={k} style={{ display: "inline-block", fontFamily: theme.fonts.display, fontWeight: 800, fontSize: 150, lineHeight: 1.02,
+            textTransform: "uppercase", letterSpacing: "-0.02em", color: said ? theme.colors.primary : theme.colors.text,
+            WebkitTextStroke: "14px #000", paintOrder: "stroke fill", textShadow: "0 10px 0 rgba(0,0,0,0.55)",
+            opacity: frame >= w.at ? 1 : 0, transform: `scale(${interpolate(p, [0, 1], [0.55, 1], clamp)}) rotate(${(i % 2 ? 1 : -1) * interpolate(p, [0, 1], [6, 0], clamp)}deg)` }}>
+            {w.w.replace(/[.,!?:]+$/, "")}
+          </span>
+        );
+      })}
+    </div>
+  );
+};

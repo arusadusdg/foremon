@@ -38,12 +38,16 @@ const lines = JSON.parse(readFileSync(join(root, "src", "vo-script.json"), "utf8
 const outDir = join(root, "public", "vo");
 mkdirSync(outDir, { recursive: true });
 const result = [];
+// Lines whose text hasn't changed since the last run reuse their clip, so they cost no credits.
+const previous = existsSync(join(root, "src", "vo.json")) ? JSON.parse(readFileSync(join(root, "src", "vo.json"), "utf8")) : [];
 const tts = (text, model, settings) => fetch(`${API}/text-to-speech/${voice.voice_id}/with-timestamps?output_format=mp3_44100_128`, {
   method: "POST", headers,
   body: JSON.stringify({ text, model_id: model, voice_settings: settings ?? { stability: 0.4, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true } }),
 });
 let used = 0;
 for (const { scene, text, model = "eleven_multilingual_v2", settings, fallback } of lines) {
+  const old = previous.find((p) => p.scene === scene && p.text === text);
+  if (old && existsSync(join(root, "public", old.file))) { result.push(old); console.log(scene.padEnd(7), "unchanged, reused"); continue; }
   let r = await tts(text, model, settings);
   used += text.length;
   if (!r.ok && fallback) {
@@ -68,7 +72,7 @@ for (const { scene, text, model = "eleven_multilingual_v2", settings, fallback }
   // Audio tags like [shouting] are directions, not words.
   for (let i = words.length - 1; i >= 0; i--) if (/^\[.*\]$/.test(words[i].w)) words.splice(i, 1);
   const duration = alignment.character_end_times_seconds.at(-1);
-  result.push({ scene, file: `vo/${scene}.mp3`, duration, words });
+  result.push({ scene, text, file: `vo/${scene}.mp3`, duration, words });
   console.log(scene.padEnd(7), duration.toFixed(2) + "s", text);
 }
 writeFileSync(join(root, "src", "vo.json"), JSON.stringify(result, null, 2));

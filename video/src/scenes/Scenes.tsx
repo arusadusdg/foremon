@@ -1,14 +1,13 @@
-// The seven beats of the TikTok. Each scene gets its length in frames and places its own sound effects.
+// The beats of the TikTok, cut for a half-second attention span: full-screen shots, zoom punch on every cut, big
+// numbers. Words come from the voice-over captions (Video.tsx), except where a scene draws its own.
 import React from "react";
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { clamp, theme } from "../theme";
-import { Card, Chip, Column, Counter, Entrance, Footage, KenBurns, Label, SceneExit, WordReveal } from "../components/Motion";
+import { Chip, Counter, Entrance, Footage, KenBurns, Punch, SceneExit, WordReveal } from "../components/Motion";
 import footage from "../footage.json";
 
 export type Word = { w: string; start: number; end: number };
-/** The hook shows the first part of the house build behind its text; the House scene carries on from this frame. */
-export const HOUSE_SPLIT = 150;
-/** [dur]: scene length in frames. [words]: the voice-over's words (seconds from [lead], the frame the voice starts). */
+/** [dur]: scene length in frames. [words]: the voice-over's words, in seconds on the scene's own clock. */
 export type SceneProps = { dur: number; words?: Word[]; lead?: number };
 
 const useSec = () => {
@@ -26,226 +25,161 @@ const Sfx: React.FC<{ at: number; name: "whoosh" | "pop" | "tick" | "hit" | "ris
   );
 };
 
-/** A line of text over the bottom of a card, on a dark fade. */
-const CardCaption: React.FC<{ text: string; delay: number }> = ({ text, delay }) => (
-  <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "140px 50px 46px",
-    background: `linear-gradient(180deg, transparent, ${theme.colors.shade})`, display: "flex", justifyContent: "center" }}>
-    <Entrance delay={delay} rise={24} cfg="snappy">
-      <div style={{ fontFamily: theme.fonts.display, fontWeight: 600, fontSize: 50, color: theme.colors.text, textAlign: "center", textWrap: "balance" } as React.CSSProperties}>{text}</div>
-    </Entrance>
-  </div>
+/** A full-screen shot under the captions: darkened at the edges so white words read anywhere. */
+const Shot: React.FC<{ children: React.ReactNode; dim?: number }> = ({ children, dim = 0.85 }) => (
+  <Punch>
+    <AbsoluteFill style={{ filter: `brightness(${dim})` }}>{children}</AbsoluteFill>
+    <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.35), transparent 30%, transparent 50%, rgba(0,0,0,0.55) 80%)" }} />
+  </Punch>
 );
 
-/** A word that slams in from big to normal size on a bouncy spring, at frame [at]. */
+/** A word that slams in from big to normal size, visible from its first frame. */
 const Slam: React.FC<{ text: string; at: number; size: number; color: string; glow?: boolean }> = ({ text, at, size, color, glow }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const p = spring({ frame: frame - at, fps, config: theme.spring.bouncy });
+  const p = spring({ frame: frame - at, fps, config: { damping: 11, stiffness: 260, mass: 0.6 } });
   return (
     <span style={{ display: "inline-block", fontFamily: theme.fonts.display, fontWeight: 800, fontSize: size, lineHeight: 1, color,
-      letterSpacing: "-0.03em", opacity: interpolate(frame - at, [0, 2], [0, 1], clamp),
-      transform: `scale(${interpolate(p, [0, 1], [2.4, 1], clamp)}) rotate(${interpolate(p, [0, 1], [-8, 0], clamp)}deg)`,
-      textShadow: glow ? `0 0 60px ${theme.colors.glow}, 0 8px 0 rgba(0,0,0,0.5)` : "0 8px 0 rgba(0,0,0,0.5), 0 0 40px rgba(0,0,0,0.6)" }}>{text}</span>
+      letterSpacing: "-0.03em", opacity: frame >= at ? 1 : 0, WebkitTextStroke: "12px #000", paintOrder: "stroke fill",
+      transform: `scale(${interpolate(p, [0, 1], [1.9, 1], clamp)}) rotate(${interpolate(p, [0, 1], [-8, 0], clamp)}deg)`,
+      textShadow: glow ? `0 0 60px ${theme.colors.glow}, 0 10px 0 rgba(0,0,0,0.55)` : "0 10px 0 rgba(0,0,0,0.55)" }}>{text}</span>
   );
 };
 
 /**
- * The shouted opener: "HEY, LISTEN! Team Rocket doesn't want you to know this..." Each word lands on the frame the
- * voice says it. Two white flash hits (HEY, TEAM), far under three flashes a second, plus screen shake on every slam.
+ * The shouted opener over the tree bursting apart: "HEY," is on screen from frame 0, each word lands on the frame the
+ * voice says it. Two flash hits (HEY, TEAM), far under three flashes a second, drawn under the words so they stay sharp.
  */
 export const Hook: React.FC<SceneProps> = ({ dur, words = [], lead = 0 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = useSec();
-  // When each word is said, with timings that still work if there is no voice-over yet.
-  const at = (i: number, fallback: number) => lead + Math.round((words[i]?.start ?? fallback) * fps);
-  const hey = at(0, 0.1), listen = at(1, 0.4), team = at(2, 1.3), rocket = at(3, 1.6);
-  const rest = ["doesn't", "want", "you", "to", "know", "this..."].map((w, i) => ({ w, f: at(4 + i, 2.0 + i * 0.3) }));
-  const flash = Math.max(...[hey, team].map((t) => (frame < t ? 0 : interpolate(frame, [t, t + 8], [0.85, 0], { ...clamp, easing: theme.ease.out }))));
-  const shake = [hey, listen, team, rocket].reduce((sum, t) => sum + (frame >= t ? Math.exp(-(frame - t) / 4) : 0), 0);
-  const sx = Math.sin(frame * 2.7) * 24 * shake, sy = Math.cos(frame * 3.1) * 18 * shake;
-  // "HEY, LISTEN!" makes room when "TEAM ROCKET" lands.
-  const up = spring({ frame: frame - team + 6, fps, config: theme.spring.snappy });
-  const pulse = 0.25 + 0.2 * Math.max(0, Math.sin(frame / 3));
+  const at = (i: number, fallback: number) => Math.max(0, lead + Math.round((words[i]?.start ?? fallback) * fps));
+  const hey = 0, listen = at(1, 0.3), team = at(2, 0.8), rocket = at(3, 1.0);
+  const rest = ["doesn't", "want", "you", "to", "know", "this..."].map((w, i) => ({ w, f: at(4 + i, 1.3 + i * 0.2) }));
+  const flash = Math.max(...[hey, team].map((t) => (frame < t ? 0 : interpolate(frame, [t, t + 6], [0.7, 0], { ...clamp, easing: theme.ease.out }))));
+  const shake = [hey, listen, team, rocket].reduce((sum, t) => sum + (frame >= t ? Math.exp(-(frame - t) / 3) : 0), 0);
+  const sx = Math.sin(frame * 2.7) * 26 * shake, sy = Math.cos(frame * 3.1) * 20 * shake;
+  const up = spring({ frame: frame - team + 4, fps, config: { damping: 16, stiffness: 260, mass: 0.6 } });
   return (
     <SceneExit dur={dur}>
-      {/* Gameplay from the very first frame, dimmed so the words read on top. */}
-      <AbsoluteFill style={{ filter: "brightness(0.42) saturate(1.15)" }}>
-        <Footage dir="house" first={0} last={HOUSE_SPLIT} dur={dur} pos="55% 50%" zoomTo={1.15} />
+      {/* The tree bursts about a tenth of a second in. */}
+      <AbsoluteFill style={{ filter: "brightness(0.62) saturate(1.2)" }}>
+        <Footage dir="timber" first={22} last={52} dur={dur} pos="47% 40%" zoomTo={1.18} />
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 45%, ${theme.colors.accent}, transparent 70%)`, opacity: pulse }} />
+      <AbsoluteFill style={{ background: "#FFFFFF", opacity: flash, pointerEvents: "none" }} />
       <AbsoluteFill style={{ transform: `translate(${sx}px, ${sy}px)` }}>
-        {/* HEY, / LISTEN! stacked big in the middle, then shrinking up out of the way of TEAM ROCKET. */}
-        <div style={{ position: "absolute", left: "50%", top: interpolate(up, [0, 1], [900, 640], clamp), display: "flex", flexDirection: "column",
+        <div style={{ position: "absolute", left: "50%", top: interpolate(up, [0, 1], [860, 600], clamp), display: "flex", flexDirection: "column",
           alignItems: "center", transform: `translate(-50%, -50%) scale(${interpolate(up, [0, 1], [1, 0.55], clamp)})` }}>
-          <Slam text="HEY," at={hey} size={220} color={theme.colors.chip} />
-          <Slam text="LISTEN!" at={listen} size={220} color={theme.colors.chip} />
+          <Slam text="HEY," at={hey} size={240} color={theme.colors.chip} />
+          <Slam text="LISTEN!" at={listen} size={240} color={theme.colors.chip} />
         </div>
-        <div style={{ position: "absolute", left: "50%", top: 900, display: "flex", gap: 30, transform: "translate(-50%, -50%)", whiteSpace: "nowrap" }}>
-          <Slam text="TEAM" at={team} size={130} color={theme.colors.primary} glow />
-          <Slam text="ROCKET" at={rocket} size={130} color={theme.colors.primary} glow />
+        <div style={{ position: "absolute", left: "50%", top: 880, display: "flex", gap: 30, transform: "translate(-50%, -50%)", whiteSpace: "nowrap" }}>
+          <Slam text="TEAM" at={team} size={136} color={theme.colors.primary} glow />
+          <Slam text="ROCKET" at={rocket} size={136} color={theme.colors.primary} glow />
         </div>
-        <div style={{ position: "absolute", top: 1010, left: 90, right: 90, display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: 22 }}>
+        <div style={{ position: "absolute", top: 990, left: 70, right: 70, display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: 22 }}>
           {rest.map(({ w, f }) => {
-            const p = spring({ frame: frame - f, fps, config: theme.spring.snappy });
-            return <span key={w} style={{ display: "inline-block", fontFamily: theme.fonts.display, fontWeight: 800, fontSize: 84, color: theme.colors.text,
-              opacity: p, transform: `translateY(${interpolate(p, [0, 1], [30, 0], clamp)}px)`, textShadow: "0 6px 30px rgba(0,0,0,0.6)" }}>{w}</span>;
+            const p = spring({ frame: frame - f, fps, config: { damping: 12, stiffness: 300, mass: 0.5 } });
+            return <span key={w} style={{ display: "inline-block", fontFamily: theme.fonts.display, fontWeight: 800, fontSize: 92, color: theme.colors.text,
+              opacity: frame >= f ? 1 : 0, transform: `scale(${interpolate(p, [0, 1], [0.6, 1], clamp)})`, WebkitTextStroke: "10px #000",
+              paintOrder: "stroke fill", textShadow: "0 8px 0 rgba(0,0,0,0.5)" }}>{w}</span>;
           })}
         </div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: "#FFFFFF", opacity: flash, pointerEvents: "none" }} />
-      <Sfx at={hey - 1} name="hit" volume={0.45} />
+      <Sfx at={0} name="hit" volume={0.5} />
       <Sfx at={team - 1} name="hit" volume={0.45} />
       <Sfx at={dur - s(1.0)} name="riser" volume={0.5} />
     </SceneExit>
   );
 };
 
-export const House: React.FC<SceneProps> = ({ dur }) => {
-  const s = useSec();
-  return (
-    <SceneExit dur={dur}>
-      <Card>
-        <Footage dir="house" first={HOUSE_SPLIT} last={footage.house} dur={dur} pos="55% 50%" zoomTo={1.08} />
-        <CardCaption text="Block by block, from a Litematica plan" delay={s(2.4)} />
-      </Card>
-      <Column top={theme.layout.safeTop} gap={20}>
-        <Label text="COBBLEMON ADDON" delay={2} />
-        <WordReveal text="Your Pokémon | build your house" hero={2} delay={s(0.15)} size={110} />
-      </Column>
-      <Sfx at={0} name="hit" volume={0.55} />
-      <Sfx at={s(2.4) - 2} name="pop" volume={0.5} />
-    </SceneExit>
-  );
-};
+/** The crew builds a whole village house in two seconds. */
+export const House: React.FC<SceneProps> = ({ dur }) => (
+  <SceneExit dur={dur}>
+    <Shot><Footage dir="house" first={0} last={footage.house} dur={dur} pos="53% 50%" zoomTo={1.1} /></Shot>
+    <Sfx at={0} name="hit" volume={0.55} />
+  </SceneExit>
+);
 
-export const Crew: React.FC<SceneProps> = ({ dur }) => {
-  const s = useSec();
-  const types = ["Fighting", "Rock", "Steel", "Psychic"];
-  return (
-    <SceneExit dur={dur}>
-      <Card delay={2} h={760}>
-        <KenBurns src="img/dex.png" dur={dur} pos="100% 50%" zoomTo={1.08} panX={-18} />
-      </Card>
-      <Column top={theme.layout.cardY + 760 + 44} gap={22}>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16 }}>
-          {types.map((t, i) => <Chip key={t} text={t} delay={s(0.9) + i * 4} size={48} />)}
-        </div>
-        <Entrance delay={s(1.7)} rise={20} cfg="snappy">
-          <div style={{ fontFamily: theme.fonts.display, fontWeight: 600, fontSize: 50, color: theme.colors.text }}>build fastest. Flyers do the roof.</div>
-        </Entrance>
-      </Column>
-      <Column top={theme.layout.safeTop + 40}>
-        <WordReveal text="Types pick | the crew" hero={0} delay={3} size={118} />
-      </Column>
-      {types.map((t, i) => <Sfx key={t} at={s(0.9) + i * 4 - 2} name="pop" volume={0.35} />)}
-    </SceneExit>
-  );
-};
+/** The Work Dex: the best Pokemon for each job. */
+export const Crew: React.FC<SceneProps> = ({ dur }) => (
+  <SceneExit dur={dur}>
+    <Shot dim={0.9}><KenBurns src="img/dex.png" dur={dur} pos="96% 40%" zoomTo={1.12} panX={-20} /></Shot>
+  </SceneExit>
+);
 
-export const Timber: React.FC<SceneProps> = ({ dur }) => {
-  const s = useSec();
-  return (
-    <SceneExit dur={dur}>
-      <Card delay={2}>
-        <Footage dir="timber" first={14} last={45} dur={dur} pos="50% 45%" zoomTo={1.1} />
-        <CardCaption text="A level 50 Machop and its Timber perk" delay={s(1.6)} />
-      </Card>
-      <Column top={theme.layout.safeTop + 10} gap={20}>
-        <Label text="LEVEL PERKS" delay={3} />
-        <WordReveal text="One swing. | Whole tree." hero={2} delay={5} size={112} />
-      </Column>
-      <Sfx at={s(0.6)} name="hit" volume={0.6} />
-    </SceneExit>
-  );
-};
-
+/** "10" and the ten job names, bursting in two frames apart. */
 export const Jobs: React.FC<SceneProps> = ({ dur }) => {
-  const s = useSec();
   const jobs = ["Lumber", "Mining", "Farming", "Smelting", "Sorting", "Hauling", "Building", "Demolition", "Guard", "Crafting"];
   return (
     <SceneExit dur={dur}>
-      <AbsoluteFill style={{ opacity: 0.1, filter: "blur(12px)" }}>
-        <KenBurns src="img/jobs.png" dur={dur} pos="20% 50%" zoomTo={1.12} />
-      </AbsoluteFill>
-      <Column top={theme.layout.safeTop + 90} gap={0}>
-        <Counter to={10} delay={2} size={340} />
-        <WordReveal text="jobs to hand out" delay={s(0.5)} size={92} />
-      </Column>
-      <div style={{ position: "absolute", top: 930, left: 90, right: 90, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 22 }}>
-        {jobs.map((j, i) => <Chip key={j} text={j} delay={s(0.9) + i * 4} size={52} />)}
+      <Shot dim={0.2}><KenBurns src="img/jobs.png" dur={dur} pos="15% 50%" zoomTo={1.15} /></Shot>
+      <div style={{ position: "absolute", top: 300, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <Counter to={10} delay={0} size={380} />
+        <WordReveal text="JOBS" delay={3} size={130} />
       </div>
-      <Sfx at={0} name="hit" volume={0.55} />
-      {jobs.map((j, i) => <Sfx key={j} at={s(0.9) + i * 4 - 2} name="tick" volume={0.4} />)}
+      <div style={{ position: "absolute", top: 960, left: 70, right: 70, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 20 }}>
+        {jobs.map((j, i) => <Chip key={j} text={j} delay={4 + i * 2} size={56} />)}
+      </div>
+      {jobs.map((j, i) => (i % 2 === 0 ? <Sfx key={j} at={3 + i * 2} name="tick" volume={0.35} /> : null))}
     </SceneExit>
   );
 };
 
-export const Guard: React.FC<SceneProps> = ({ dur }) => {
-  const s = useSec();
-  return (
-    <SceneExit dur={dur}>
-      <Card delay={2}>
-        <KenBurns src="img/map.png" dur={dur} pos="0% 50%" zoomTo={1.14} panX={20} />
-        <CardCaption text="Guards fight mobs and put up torches" delay={s(1.4)} />
-      </Card>
-      <Column top={theme.layout.safeTop + 10} gap={20}>
-        <Label text="NEW: GUARD JOB" delay={3} />
-        <WordReveal text="Draw a patrol. | They guard it." hero={4} delay={5} size={100} />
-      </Column>
-      <Sfx at={s(1.4) - 2} name="pop" volume={0.45} />
-    </SceneExit>
-  );
-};
+/** The Guard map with a patrol route. */
+export const Guard: React.FC<SceneProps> = ({ dur }) => (
+  <SceneExit dur={dur}>
+    <Shot dim={0.9}><KenBurns src="img/map.png" dur={dur} pos="17% 45%" zoomTo={1.14} panX={18} /></Shot>
+  </SceneExit>
+);
 
-export const Skills: React.FC<SceneProps> = ({ dur }) => {
-  const s = useSec();
-  return (
-    <SceneExit dur={dur}>
-      <Card delay={s(0.4)} y={760} h={840}>
-        <KenBurns src="img/skills.png" dur={dur} pos="50% 50%" zoomTo={1.1} />
-      </Card>
-      <Column top={theme.layout.safeTop + 10} gap={0}>
-        <Counter to={49} delay={2} size={300} />
-        <WordReveal text="upgrades to unlock" delay={s(0.55)} size={88} />
-      </Column>
-      <Sfx at={s(0.9)} name="hit" volume={0.5} />
-    </SceneExit>
-  );
-};
+/** "49 upgrades" over the skill tree. */
+export const Skills: React.FC<SceneProps> = ({ dur }) => (
+  <SceneExit dur={dur}>
+    <Shot dim={0.4}><KenBurns src="img/skills.png" dur={dur} pos="50% 50%" zoomTo={1.15} /></Shot>
+    <div style={{ position: "absolute", top: 560, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <Counter to={49} delay={0} size={380} />
+      <WordReveal text="UPGRADES" delay={3} size={130} />
+    </div>
+    <Sfx at={6} name="hit" volume={0.5} />
+  </SceneExit>
+);
 
+/** The end card: logo, name, where to get it. Holds still at the end so the loop restarts cleanly. */
 export const Cta: React.FC<SceneProps> = ({ dur }) => {
   const s = useSec();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const icon = spring({ frame: frame - 2, fps, config: theme.spring.bouncy });
+  const icon = spring({ frame, fps, config: theme.spring.bouncy });
   const float = Math.sin(frame / 26) * 6;
   const last = String(footage.house - 1).padStart(3, "0");
   return (
     <SceneExit dur={dur}>
-      <AbsoluteFill style={{ opacity: 0.3, filter: "blur(10px)" }}>
-        <Img src={staticFile(`footage/house/${last}.jpg`)} style={{ width: "100%", height: "100%", objectFit: "cover",
-          transform: `scale(${interpolate(frame, [0, dur], [1.15, 1.05], { ...clamp, easing: theme.ease.inOut })})` }} />
-      </AbsoluteFill>
-      <Column top={430} gap={34}>
-        <Img src={staticFile("img/icon.png")} style={{ width: 300, height: 300, imageRendering: "pixelated", borderRadius: 36,
-          opacity: icon, transform: `translateY(${interpolate(icon, [0, 1], [60, 0], clamp) + float}px) scale(${interpolate(icon, [0, 1], [0.6, 1], clamp)}) rotate(${interpolate(icon, [0, 1], [-12, 0], clamp)}deg)`,
+      <Punch>
+        <AbsoluteFill style={{ opacity: 0.35, filter: "blur(10px)" }}>
+          <Img src={staticFile(`footage/house/${last}.jpg`)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "53% 50%",
+            transform: `scale(${interpolate(frame, [0, dur], [1.15, 1.05], { ...clamp, easing: theme.ease.inOut })})` }} />
+        </AbsoluteFill>
+      </Punch>
+      <div style={{ position: "absolute", top: 400, left: theme.layout.side, right: theme.layout.side, display: "flex", flexDirection: "column",
+        alignItems: "center", gap: 30 }}>
+        <Img src={staticFile("img/icon.png")} style={{ width: 300, height: 300, imageRendering: "pixelated", borderRadius: 36, opacity: icon,
+          transform: `translateY(${interpolate(icon, [0, 1], [60, 0], clamp) + float}px) scale(${interpolate(icon, [0, 1], [0.6, 1], clamp)}) rotate(${interpolate(icon, [0, 1], [-12, 0], clamp)}deg)`,
           boxShadow: "0 40px 90px rgba(0,0,0,0.7)" }} />
-        <Entrance delay={s(0.25)} cfg="smooth">
+        <Entrance delay={3} cfg="snappy">
           <div style={{ fontFamily: theme.fonts.pixel, fontWeight: 700, fontSize: 124, color: theme.colors.chip, letterSpacing: "0.02em",
             textShadow: "0 8px 0 rgba(0,0,0,0.5)" }}>FOREMON</div>
         </Entrance>
-        <WordReveal text="Put your Pokémon to work" delay={s(0.5)} size={70} color={theme.colors.textDim} />
-        <div style={{ height: 20 }} />
-        <Chip text="Free on CurseForge" delay={s(1.0)} size={66} hero />
-        <Entrance delay={s(1.35)} rise={16} cfg="snappy">
-          <div style={{ fontFamily: theme.fonts.display, fontWeight: 600, fontSize: 40, color: theme.colors.textDim }}>
+        <Chip text="Free on CurseForge" delay={s(0.45)} size={70} hero />
+        <Entrance delay={s(0.7)} rise={16} cfg="snappy">
+          <div style={{ fontFamily: theme.fonts.display, fontWeight: 600, fontSize: 42, color: theme.colors.textDim }}>
             Fabric 1.21.1 · Cobblemon 1.7.3 and 1.8
           </div>
         </Entrance>
-      </Column>
-      <Sfx at={0} name="hit" volume={0.55} />
-      <Sfx at={s(1.0) - 2} name="pop" volume={0.6} />
+      </div>
+      <Sfx at={0} name="hit" volume={0.6} />
+      <Sfx at={s(0.45) - 2} name="pop" volume={0.6} />
     </SceneExit>
   );
 };
