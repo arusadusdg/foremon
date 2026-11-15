@@ -102,9 +102,10 @@ Subject: A Cobblemon addon for your addon list: Pokemon that build and farm for 
 
 Numbers match the table in youtubers.md, which also has each creator's address and links (that file stays off
 GitHub). Send 2 or 3 a day, follow up once after a week at most, and swap `[your name]` for your name.
-YouTube often hides comments that contain links: if a comment disappears, use the email instead.
+YouTube often hides comments that contain links, so the comment-only messages leave links out. "About panel" email: on a
+computer, open the channel, click "...more" under the channel name, then "View email address" under More info.
 
-### 1. Dimy (his Discord, or the email on his About page)
+### 1. Dimy (his Discord, or the email in his About panel)
 
 **Subject:** A Cobblemon addon where your Pokemon build your schematics
 
@@ -196,7 +197,7 @@ Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 It was made with help from an AI coding assistant. Thanks for the series!
 [your name]
 
-### 6. Hey KC! (the email on his About page, or a comment)
+### 6. Hey KC! (the email in his About panel, or a comment)
 
 **Subject:** A Cobblemon addon where your Pokemon build and run the base
 
@@ -226,7 +227,7 @@ https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246, download:
 https://www.curseforge.com/minecraft/mc-mods/foremon. Made with help from an AI coding assistant. Good luck with
 the shiny alpha!
 
-### 8. Pocketcraft (the email on the About page or pocketcraft.net)
+### 8. Pocketcraft (the email in the About panel, or on pocketcraft.net)
 
 **Subject:** A Cobblemon addon where Pokemon build and farm for you
 
@@ -246,26 +247,14 @@ It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4, made with help from an A
 Thanks for all the Cobblemon content,
 [your name]
 
-### 9. Jay Dolton (the email on his About page, or a comment)
+### 9. Jay Dolton (a comment on his latest video: he has no email or links)
 
-**Subject:** Your next Cobblemon zoo could build itself
+Loved the 151 Days Cobblemon zoo! I made a free Cobblemon addon, Foremon, where your Pokemon build your Litematica
+schematics for you, block by block (Fighting, Rock, Steel and Psychic types build fastest, only flyers reach the
+roof). The next enclosure could be built by the Pokemon that live in it. Search Foremon on CurseForge if you want to
+try it. (Made with help from an AI coding assistant.)
 
-Hi Jay,
-
-After "I Spent 151 Days Building A Cobblemon Zoo", I had to send this. I made a free addon called Foremon where your
-Pokemon build for you. Load a Litematica schematic, put the blocks in a chest, and your crew builds it block by
-block. Who you pick matters: Fighting, Rock, Steel and Psychic types build fastest, and only a Pokemon that can fly
-can reach the roof. So the next enclosure could be built by the Pokemon that live in it.
-
-Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
-Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-It's free, Fabric 1.21.1, and made with help from an AI coding assistant.
-
-Cheers,
-[your name]
-
-### 10. Sneelz (a comment on his latest Short, or the email on his About page)
+### 10. Sneelz (his Discord, or the email in his About panel)
 
 Hey Sneelz! Your Short on the baby legendaries addon is how I found you, so here's one for a future Short. Foremon is
 a free Cobblemon addon where your Pokemon build your Litematica schematics for you, block by block. Types decide the
@@ -292,19 +281,12 @@ Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 Made with help from an AI coding assistant. Thanks for keeping everyone up to date!
 [your name]
 
-### 12. Dangsterz (a comment, or the email on his About page)
+### 12. Dangsterz (a comment on his latest video: he has no email or links)
 
-Hi Dangsterz! The Pokemon Center you built in your Cobbleverse living dex series is great. I made a free addon called
-Foremon where your Pokemon do the building: place a Litematica schematic, fill a chest with the blocks, and your crew
-builds it block by block. A living dex has the perfect builders for it: Fighting, Rock, Steel and Psychic types build
-fastest, and only a Pokemon that can fly reaches the roof. An earlier version ran in Cobbleverse without problems
-(Cobblemon 1.7.3, Fabric 1.21.1).
-
-Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
-Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-Made with help from an AI coding assistant. Good luck with the dex!
-[your name]
+The Pokemon Center in this series is great! I made a free Cobblemon addon, Foremon, where your Pokemon build your
+Litematica schematics for you, block by block. A living dex has the perfect crew for it: Fighting, Rock, Steel and
+Psychic types build fastest, and only flyers reach the roof. Search Foremon on CurseForge if you want to try it.
+(Made with help from an AI coding assistant.)
 
 ### 13. Blasting Mofos (Discord DM, or Twitch)
 
@@ -328,7 +310,7 @@ living dex finally has a job for every box. Clip: https://www.tiktok.com/@foremo
 download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding
 assistant. Cheers!
 
-### 15. ItsArenZ (his Discord, a TikTok DM to @itsarenzminecraft, or the email on his About page)
+### 15. ItsArenZ (his Discord, or a TikTok DM to @itsarenzminecraft; he has no email)
 
 Hey ArenZ! This one would fit your "Ranking Cool Minecraft Mods" Shorts: Foremon is a free addon for Cobblemon (the
 Pokemon mod) where your Pokemon build your Litematica schematics for you, block by block, and a level 50 Machop fells
@@ -360,7 +342,7 @@ Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 It's built with help from an AI coding assistant. Thanks for reading!
 [your name]
 
-### 17. Arpus (his Discord, or the email on his About page)
+### 17. Arpus (the email in his About panel, or his Discord)
 
 **Subject:** An idea for a Cobblemon 100 Days: your Pokemon build the base
 
