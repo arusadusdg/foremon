@@ -10,6 +10,8 @@ import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.level.levelgen.Heightmap
+import dev.foremon.world.Zone
 import kotlin.math.min
 
 /** The menu of one job site: pick the job, manage the crew, set the filter, start and pause. */
@@ -98,13 +100,13 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         var y = y0 + 32
         for (j in Job.entries) {
             val sel = j == job
-            val hot = hover(x0 + 6, y, 88, 20)
-            g.fill(x0 + 6, y, x0 + 94, y + 20, if (sel) Pal.ACCENT else if (hot) Pal.CARD_HOVER else Pal.CARD)
-            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), x0 + 8, y + 2)
+            val hot = hover(x0 + 6, y, 88, 19)
+            g.fill(x0 + 6, y, x0 + 94, y + 19, if (sel) Pal.ACCENT else if (hot) Pal.CARD_HOVER else Pal.CARD)
+            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), x0 + 8, y + 1)
             clip(g, tr("foremon.job.${j.key}"), x0 + 27, y + 6, 64)
             if (hot) tip = lines(tr("foremon.job.${j.key}"), muted(tr("foremon.job.${j.key}.hint")))
-            click(x0 + 6, y, 88, 20) { op("job") { t -> t.putString("job", j.key) } }
-            y += 22
+            click(x0 + 6, y, 88, 19) { op("job") { t -> t.putString("job", j.key) } }
+            y += 21
         }
 
         // ---- controls, right
@@ -164,14 +166,15 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         button(g, cx + quarter, y0 + 32, quarter - 1, 16, tr("foremon.gui.tab_pc"), accent = tab == 2,
             tooltip = lines(tr("foremon.gui.tab_pc.hint"))) { tab = 2; pc = null; pcAsked = -1 }
         val hauling = job == Job.HAULING
+        val guard = job == Job.GUARD
         button(g, cx + quarter * 2, y0 + 32, quarter - 1, 16,
-            if (hauling) tr("foremon.gui.tab_routes", data.getList("routes", Tag.TAG_COMPOUND.toInt()).size) else tr("foremon.gui.tab_chests", chests().size), accent = tab == 3,
-            tooltip = lines(tr(if (hauling) "foremon.gui.routes.how" else "foremon.gui.tab_chests.hint"))) { tab = 3 }
+            when { hauling -> tr("foremon.gui.tab_routes", data.getList("routes", Tag.TAG_COMPOUND.toInt()).size); guard -> tr("foremon.gui.tab_map"); else -> tr("foremon.gui.tab_chests", chests().size) },
+            accent = tab == 3, tooltip = lines(tr(when { hauling -> "foremon.gui.routes.how"; guard -> "foremon.gui.tab_map.hint"; else -> "foremon.gui.tab_chests.hint" }))) { tab = 3 }
         button(g, cx + quarter * 3, y0 + 32, cw - quarter * 3, 16, tr("foremon.gui.tab_filter_short"), accent = tab == 1) { tab = 1 }
         when (tab) {
             0 -> crew(g, cx, y0 + 52, cw, h - 66)
             2 -> pcTab(g, cx, y0 + 52, cw, h - 66)
-            3 -> if (hauling) routesTab(g, cx, y0 + 52, cw, h - 66) else chestsTab(g, cx, y0 + 52, cw, h - 66)
+            3 -> if (hauling) routesTab(g, cx, y0 + 52, cw, h - 66) else if (guard) mapTab(g, cx, y0 + 52, cw, h - 66) else chestsTab(g, cx, y0 + 52, cw, h - 66)
             else -> filter(g, cx, y0 + 52, cw)
         }
 
@@ -348,6 +351,114 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         if (routes.size > rows) text(g, tr("foremon.gui.more", routes.size - rows), x, y0 + 11 + rows * rowH, Pal.MUTED)
         if (routes.isEmpty()) clip(g, muted(tr("foremon.status.make_routes")), x, y0 + 14, w, Pal.MUTED)
         clip(g, muted(tr("foremon.gui.routes.how")), x, y0 + h - 10, w, Pal.MUTED)
+    }
+
+    // ---- Guard: the map. Which boxes are shown (torches or patrol), what a drag draws, and the drag going on.
+    private var layer = Zone.TORCHES
+    private var brushAllow = false
+    private var dragFrom: IntArray? = null
+    private var map: IntArray? = null
+    private var mapAt = 0
+    private var mapR = -1
+    // Where the map was drawn last frame, for the mouse: its corner on screen, cell size, size, cells across, world x/z of its corner.
+    private var mapX = 0; private var mapY = 0; private var mapCell = 1; private var mapSize = 0; private var mapN = 0; private var mapWx = 0; private var mapWz = 0
+
+    /** Guard: the work area seen from above, to draw boxes on: where torches go or never go, and where guards hunt. */
+    private fun mapTab(g: GuiGraphics, x: Int, y0: Int, w: Int, h: Int) {
+        val r = data.getInt("radius"); val n = 2 * r + 1
+        val c = BlockPos.of(pos)
+        val zones = Zone.unpack(data.getIntArray("zones"))
+        val side = 92
+        val size = min(w - side - 4, h - 12)
+        if (size < 16) return
+        val cell = (size / n).coerceAtLeast(1)
+        mapX = x; mapY = y0; mapCell = cell; mapSize = min(size, n * cell); mapN = n; mapWx = c.x - r; mapWz = c.z - r
+        // The ground changes slowly; looking it up again every two seconds is plenty.
+        if (map == null || mapR != r || ticks - mapAt >= 40) { map = colors(c, r); mapR = r; mapAt = ticks }
+        val colors = map!!
+        g.fill(x - 1, y0 - 1, x + mapSize + 1, y0 + mapSize + 1, Pal.POKE_EDGE)
+        g.enableScissor(x, y0, x + mapSize, y0 + mapSize)
+        // One fill per run of the same colour along a row: flat ground is a handful of quads instead of one per block.
+        for (j in 0 until n) {
+            var i = 0
+            while (i < n) {
+                val col = colors[j * n + i]; var e = i + 1
+                while (e < n && colors[j * n + e] == col) e++
+                g.fill(x + i * cell, y0 + j * cell, x + e * cell, y0 + (j + 1) * cell, col)
+                i = e
+            }
+        }
+        fun box(x1: Int, z1: Int, x2: Int, z2: Int, fill: Int, edge: Int) {
+            val sx1 = x + (minOf(x1, x2) - mapWx) * cell; val sz1 = y0 + (minOf(z1, z2) - mapWz) * cell
+            val sx2 = x + (maxOf(x1, x2) - mapWx + 1) * cell; val sz2 = y0 + (maxOf(z1, z2) - mapWz + 1) * cell
+            g.fill(sx1, sz1, sx2, sz2, fill); g.renderOutline(sx1, sz1, sx2 - sx1, sz2 - sz1, edge)
+        }
+        fun fillOf(allow: Boolean) = if (allow) 0x5550E070 else 0x66FF4040
+        for (b in zones) if (b.layer == layer) box(b.x1, b.z1, b.x2, b.z2, fillOf(b.allow), if (b.allow) 0xFF50E070.toInt() else 0xFFFF4040.toInt())
+        // The chest in the middle, and you, when you are on the map.
+        box(c.x, c.z, c.x, c.z, 0xFFFFFFFF.toInt(), 0xFF000000.toInt())
+        mc.player?.let { p -> if (kotlin.math.abs(p.blockX - c.x) <= r && kotlin.math.abs(p.blockZ - c.z) <= r) box(p.blockX, p.blockZ, p.blockX, p.blockZ, Pal.STAR, 0xFF000000.toInt()) }
+        val hot = cellAt(mx.toDouble(), my.toDouble())
+        dragFrom?.let { f -> val to = cellAt(mx.toDouble(), my.toDouble(), clamp = true)!!; box(f[0], f[1], to[0], to[1], fillOf(brushAllow), 0xFFFFFFFF.toInt()) }
+        g.disableScissor()
+        if (hot != null && dragFrom == null) tip = lines(Component.literal("${hot[0]}, ${hot[1]}"),
+            tr(if (Zone.allows(zones, Zone.TORCHES, hot[0], hot[1])) "foremon.gui.map_torch_yes" else "foremon.gui.map_torch_no"),
+            tr(if (Zone.allows(zones, Zone.PATROL, hot[0], hot[1])) "foremon.gui.map_patrol_yes" else "foremon.gui.map_patrol_no"))
+        // Left: start a box (it is sent when the button is let go). Right: remove the box under the mouse.
+        click(x, y0, mapSize, mapSize) { b ->
+            val at = cellAt(mx.toDouble(), my.toDouble()) ?: return@click
+            if (b == 0) dragFrom = at
+            else zones.indexOfLast { it.layer == layer && it.has(at[0], at[1]) }.takeIf { it >= 0 }?.let { i -> op("zone_remove") { t -> t.putInt("index", i) } }
+        }
+
+        val sx = x + mapSize + 4; var sy = y0
+        text(g, tr("foremon.gui.map_show"), sx, sy, Pal.MUTED); sy += 10
+        button(g, sx, sy, side, 14, tr("foremon.gui.map_torches"), accent = layer == Zone.TORCHES, tooltip = lines(tr("foremon.gui.map_torches.hint"))) { layer = Zone.TORCHES }; sy += 16
+        button(g, sx, sy, side, 14, tr("foremon.gui.map_patrol"), accent = layer == Zone.PATROL, tooltip = lines(tr("foremon.gui.map_patrol.hint"))) { layer = Zone.PATROL }; sy += 20
+        text(g, tr("foremon.gui.map_draw"), sx, sy, Pal.MUTED); sy += 10
+        button(g, sx, sy, side, 14, tr("foremon.gui.map_only"), accent = brushAllow, tooltip = lines(tr("foremon.gui.map_only.hint"))) { brushAllow = true }; sy += 16
+        button(g, sx, sy, side, 14, tr("foremon.gui.map_keep_out"), accent = !brushAllow, tooltip = lines(tr("foremon.gui.map_keep_out.hint"))) { brushAllow = false }; sy += 20
+        val mine = zones.count { it.layer == layer }
+        button(g, sx, sy, side, 14, tr("foremon.gui.map_clear", mine), enabled = mine > 0) { op("zone_clear") { t -> t.putInt("layer", layer) } }
+        clip(g, muted(tr("foremon.gui.map_how")), x, y0 + h - 10, w, Pal.MUTED)
+    }
+
+    /** The world x/z under screen point [x], [y] on the map, or null off the map (or the nearest edge, with [clamp]). */
+    private fun cellAt(x: Double, y: Double, clamp: Boolean = false): IntArray? {
+        val vis = min(mapN, mapSize / mapCell)
+        var i = kotlin.math.floor((x - mapX) / mapCell).toInt(); var j = kotlin.math.floor((y - mapY) / mapCell).toInt()
+        if (clamp) { i = i.coerceIn(0, vis - 1); j = j.coerceIn(0, vis - 1) } else if (i !in 0 until vis || j !in 0 until vis) return null
+        return intArrayOf(mapWx + i, mapWz + j)
+    }
+
+    override fun mouseReleased(x: Double, y: Double, button: Int): Boolean {
+        val from = dragFrom ?: return super.mouseReleased(x, y, button)
+        dragFrom = null
+        val to = cellAt(x, y, clamp = true) ?: return true
+        op("zone_add") { t ->
+            t.putInt("layer", layer); t.putBoolean("allow", brushAllow)
+            t.putInt("x1", from[0]); t.putInt("z1", from[1]); t.putInt("x2", to[0]); t.putInt("z2", to[1])
+        }
+        return true
+    }
+
+    /** The work area's colours as on a map, shaded by height like one. Grey where this client has no chunk loaded. */
+    private fun colors(c: BlockPos, r: Int): IntArray {
+        val n = 2 * r + 1
+        val out = IntArray(n * n) { 0xFF2A2F36.toInt() }
+        val level = mc.level ?: return out
+        if (level.dimension().location().toString() != data.getString("dim")) return out
+        val m = BlockPos.MutableBlockPos()
+        for (j in 0 until n) for (i in 0 until n) {
+            val x = c.x - r + i; val z = c.z - r + j
+            if (!level.hasChunk(x shr 4, z shr 4)) continue
+            val top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1
+            val north = if (level.hasChunk(x shr 4, (z - 1) shr 4)) level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z - 1) - 1 else top
+            val rgb = level.getBlockState(m.set(x, top, z)).getMapColor(level, m).col
+            val f = if (top > north) 255 else if (top == north) 220 else 180
+            out[j * n + i] = (0xFF shl 24) or ((rgb shr 16 and 0xFF) * f / 255 shl 16) or ((rgb shr 8 and 0xFF) * f / 255 shl 8) or ((rgb and 0xFF) * f / 255)
+        }
+        return out
     }
 
     /** Dispatch: pick which haulers work only route [crewFor]. Anyone not picked for any route works them all in turn. */

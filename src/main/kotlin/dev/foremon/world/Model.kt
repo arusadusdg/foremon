@@ -96,6 +96,33 @@ class Filter {
     }
 }
 
+/**
+ * Guard: a box drawn on the map, all the way up and down, where workers may (allow) or may never place torches
+ * ([TORCHES]) or hunt mobs ([PATROL]). Coordinates are world x/z, both ends included.
+ */
+class Zone(val layer: Int, val allow: Boolean, val x1: Int, val z1: Int, val x2: Int, val z2: Int) {
+    fun has(x: Int, z: Int) = x in x1..x2 && z in z1..z2
+
+    companion object {
+        const val TORCHES = 0
+        const val PATROL = 1
+        const val MAX = 16
+
+        /** Keep-out boxes always win; if [layer] has any "only here" boxes, only inside one of them. */
+        fun allows(zones: List<Zone>, layer: Int, x: Int, z: Int): Boolean {
+            var only = false; var inside = false
+            for (b in zones) if (b.layer == layer) {
+                if (!b.allow && b.has(x, z)) return false
+                if (b.allow) { only = true; if (b.has(x, z)) inside = true }
+            }
+            return !only || inside
+        }
+
+        fun pack(zones: List<Zone>) = zones.flatMap { listOf(it.layer, if (it.allow) 1 else 0, it.x1, it.z1, it.x2, it.z2) }.toIntArray()
+        fun unpack(a: IntArray) = (0 until a.size / 6).map { i -> Zone(a[6 * i], a[6 * i + 1] == 1, a[6 * i + 2], a[6 * i + 3], a[6 * i + 4], a[6 * i + 5]) }
+    }
+}
+
 /** What a worker is heading to do. Saved state stays small on purpose: a step is cheap to re-plan after a restart. */
 class Step(val pos: BlockPos, val kind: Kind, val data: Int = 0) {
     enum class Kind { WORK, CHEST, DELIVER, PICKUP }
@@ -177,6 +204,10 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         routes.removeAt(index); routeIdle.clear(); crews.values.removeIf { it == r }
         for (p in listOf(r.first, r.second)) if (p != pos && routes.none { it.first == p || it.second == p }) { links.remove(p); chests.remove(p) }
     }
+    /** Guard: where torches go and where mobs are hunted, see Zone. */
+    val zones = ArrayList<Zone>()
+    fun zoneAllows(layer: Int, x: Int, z: Int) = Zone.allows(zones, layer, x, z)
+
     /** Build job: uploaded placement, see Plan. */
     var plan: Plan? = null
     var done = 0L
@@ -205,6 +236,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         cornerA?.let { t.putLong("a", it.asLong()) }; cornerB?.let { t.putLong("b", it.asLong()) }
         t.putLongArray("links", links.map { it.asLong() })
         t.putLongArray("routes", routes.flatMap { listOf(it.first.asLong(), it.second.asLong()) })
+        if (zones.isNotEmpty()) t.putIntArray("zones", Zone.pack(zones))
         t.put("filter", filter.save())
         t.putString("ball", ball)
         t.put("chests", ListTag().also { l ->
@@ -240,6 +272,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                 if (t.contains("b")) s.cornerB = BlockPos.of(t.getLong("b"))
                 t.getLongArray("links").forEach { s.links.add(BlockPos.of(it)) }
                 t.getLongArray("routes").let { a -> for (i in 0 until a.size / 2) s.routes.add(BlockPos.of(a[2 * i]) to BlockPos.of(a[2 * i + 1])) }
+                s.zones.addAll(Zone.unpack(t.getIntArray("zones")))
                 s.filter.load(t.getCompound("filter"))
                 if (t.contains("ball")) s.ball = t.getString("ball").takeIf { it in BALLS } ?: BALLS[0]
                 for (c in t.getList("chests", Tag.TAG_COMPOUND.toInt())) {

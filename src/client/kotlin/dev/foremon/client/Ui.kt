@@ -70,6 +70,7 @@ fun send(op: String, fill: (CompoundTag) -> Unit = {}) =
 val JOB_ICONS = mapOf(
     Job.LUMBER to Items.IRON_AXE, Job.MINING to Items.IRON_PICKAXE, Job.SORTING to Items.HOPPER, Job.HAULING to Items.CHEST_MINECART,
     Job.FARMING to Items.IRON_HOE, Job.SMELTING to Items.BLAST_FURNACE, Job.BUILDING to Items.BRICKS, Job.DEMOLITION to Items.TNT,
+    Job.GUARD to Items.IRON_SWORD,
 )
 
 /** Item stacks that render as a Pokemon's 3D model, made by Cobblemon's own item. Cached: screens ask for them every frame. */

@@ -41,6 +41,7 @@ How to read the boxes:
 - [x] **Smelting**: Pokemon with fire act as the furnace, no fuel
 - [x] **Building**: build a plan block by block from the chest (loading the plan from Litematica is `[~]`, see below)
 - [~] **Demolition**: take a marked area apart and return the blocks
+- [~] **Guard**: hunt hostile mobs in the work area (going for villagers and players first), put torches from the chest on spawnable dark spots; Map tab with green (only here) and red (keep out) boxes for torches and for hunting; Cleave perk, Vigilance skill
 
 ## Block filters
 

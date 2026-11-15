@@ -191,6 +191,18 @@ object Actions {
                 Foremon.tell(player, msg[0], *msg.drop(1).toTypedArray())
                 reset(s)
             }
+            "zone_add" -> {
+                // From the map in the Guard screen. Cut to the work area, since that is all the map shows.
+                val r = Workers.radius(level, s); val layer = t.getInt("layer")
+                val x1 = maxOf(minOf(t.getInt("x1"), t.getInt("x2")), s.pos.x - r); val x2 = minOf(maxOf(t.getInt("x1"), t.getInt("x2")), s.pos.x + r)
+                val z1 = maxOf(minOf(t.getInt("z1"), t.getInt("z2")), s.pos.z - r); val z2 = minOf(maxOf(t.getInt("z1"), t.getInt("z2")), s.pos.z + r)
+                if (layer in 0..1 && x1 <= x2 && z1 <= z2) {
+                    if (s.zones.size >= dev.foremon.world.Zone.MAX) Foremon.tell(player, "foremon.fail.zone_limit", dev.foremon.world.Zone.MAX.toString())
+                    else { s.zones.add(dev.foremon.world.Zone(layer, t.getBoolean("allow"), x1, z1, x2, z2)); reset(s) }
+                }
+            }
+            "zone_remove" -> { if (t.getInt("index") in s.zones.indices) s.zones.removeAt(t.getInt("index")); reset(s) }
+            "zone_clear" -> { s.zones.removeIf { it.layer == t.getInt("layer") }; reset(s) }
             "link_remove" -> s.removeLink(BlockPos.of(t.getLong("chest")))
             "clear_area" -> { s.cornerA = null; s.cornerB = null; reset(s) }
             "clear_links" -> { s.links.clear(); s.chests.clear() }
@@ -295,6 +307,7 @@ object Actions {
                 c.put("crew", ListTag().also { cl -> for (w in s.workers) if (s.crews[w.pokemonId] == (a to b)) cl.add(StringTag.valueOf(w.pokemonId.toString())) })
             })
         })
+        t.putIntArray("zones", dev.foremon.world.Zone.pack(s.zones))
         Jobs.box(s)?.let { (lo, hi) -> t.putLong("lo", lo.asLong()); t.putLong("hi", hi.asLong()); t.putBoolean("areaDone", s.cornerB != null) }
         s.plan?.let { p -> t.put("plan", CompoundTag().also { c -> c.putString("name", p.name); c.putInt("size", p.size); c.putInt("index", p.index); c.putInt("placed", p.placed); c.putInt("skipped", p.skipped) }) }
 

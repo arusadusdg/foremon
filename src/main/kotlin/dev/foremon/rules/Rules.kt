@@ -12,7 +12,7 @@ import com.google.gson.GsonBuilder
  */
 enum class Job(val key: String) {
     LUMBER("lumber"), MINING("mining"), SORTING("sorting"), HAULING("hauling"), FARMING("farming"),
-    SMELTING("smelting"), BUILDING("building"), DEMOLITION("demolition");
+    SMELTING("smelting"), BUILDING("building"), DEMOLITION("demolition"), GUARD("guard");
 
     companion object {
         private val byKey = entries.associateBy { it.key }

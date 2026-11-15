@@ -223,6 +223,18 @@
       "y": 0
     },
     {
+      "id": "speed_guard",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:iron_sword",
+      "x": 8,
+      "y": 0
+    },
+    {
       "id": "tree_feller",
       "branch": "labour",
       "max": 1,

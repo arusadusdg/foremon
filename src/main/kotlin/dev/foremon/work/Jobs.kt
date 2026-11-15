@@ -11,7 +11,19 @@ import dev.foremon.rules.Job
 import dev.foremon.world.Site
 import dev.foremon.world.Step
 import dev.foremon.world.Workers
+import dev.foremon.world.Zone
 import net.minecraft.core.BlockPos
+import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.Mob
+import net.minecraft.world.entity.NeutralMob
+import net.minecraft.world.entity.monster.Enemy
+import net.minecraft.world.entity.npc.AbstractVillager
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.level.LightLayer
+import net.minecraft.world.level.levelgen.Heightmap
+import net.minecraft.world.phys.AABB
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundSource
@@ -65,6 +77,8 @@ abstract class JobLogic {
      * Otherwise a path it flies along, start to end, over the length of the action.
      */
     open fun trip(c: Ctx, step: Step): List<net.minecraft.world.phys.Vec3>? = null
+    /** Where a moving target (a mob) is now, checked while the worker heads there. Null: it is gone, think again. */
+    open fun follow(c: Ctx, step: Step): BlockPos? = step.pos
 
     /**
      * Looks for work a little at a time. A cursor walks the area and only [Config] many blocks are
@@ -196,6 +210,7 @@ object Jobs {
         Job.SMELTING -> Smelting
         Job.BUILDING -> Building
         Job.DEMOLITION -> Demolition
+        Job.GUARD -> Guard
     }
 
     fun box(s: Site): Pair<BlockPos, BlockPos>? {
@@ -972,6 +987,116 @@ object Building : JobLogic() {
         c.level.playSound(null, pos, state.soundType.placeSound, SoundSource.BLOCKS, 1f, 1f)
         Net.fx(c.level, c.e, Net.FX_PLACE, pos, Block.getId(state))
         Protection.audit(c.level, c.s, "placed", pos, state)
+        return true
+    }
+}
+
+// ============================================================================================ Guard
+
+/**
+ * Keeps the work area safe: hunts hostile mobs there (the ones going for a villager or a player first, then the ones
+ * nearest a villager) and puts torches from the chest on every spot a mob could spawn on. Boxes drawn on the site's
+ * map say where torches may go and where the guards may hunt, see Zone.
+ */
+object Guard : JobLogic() {
+    override val gathers = true
+    private val TORCH = Blocks.TORCH.defaultBlockState()
+
+    override fun area(c: Ctx) = workArea(c, 6, 12)
+
+    override fun match(c: Ctx, pos: BlockPos, state: BlockState): Boolean {
+        if (!c.s.zoneAllows(Zone.TORCHES, pos.x, pos.z)) return false
+        val up = pos.above()
+        // Where a monster could spawn: solid ground, air above, no block light at all. Buildings count, deep caves do not.
+        return c.level.getBlockState(up).isAir && state.isValidSpawn(c.level, pos, EntityType.ZOMBIE) &&
+            c.level.getBrightness(LightLayer.BLOCK, up) == 0 &&
+            up.y >= c.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.x, pos.z) - 8 && TORCH.canSurvive(c.level, up)
+    }
+
+    /** Hostile, inside the work area and the hunting boxes, and not a neutral mob minding its own business or a named one. */
+    private fun hunts(c: Ctx, m: Mob): Boolean {
+        val r = Workers.radius(c.level, c.s)
+        return m.isAlive && m is Enemy && !m.hasCustomName() && !(m is NeutralMob && m.target == null) &&
+            kotlin.math.abs(m.blockX - c.s.pos.x) <= r && kotlin.math.abs(m.blockZ - c.s.pos.z) <= r &&
+            c.s.zoneAllows(Zone.PATROL, m.blockX, m.blockZ)
+    }
+
+    /** The mob to go after, or null when all is quiet. */
+    private fun threat(c: Ctx): Mob? {
+        val r = Workers.radius(c.level, c.s).toDouble()
+        val box = AABB(c.s.pos).inflate(r, Workers.vertical(c.level, c.s).toDouble(), r)
+        val mobs = c.level.getEntitiesOfClass(Mob::class.java, box) { hunts(c, it) }
+        if (mobs.isEmpty()) return null
+        val villagers = c.level.getEntitiesOfClass(AbstractVillager::class.java, box)
+        return mobs.minByOrNull { m ->
+            val t = m.target
+            (if (t is AbstractVillager || t is Player) 0.0 else 1e7) + (villagers.minOfOrNull { it.distanceToSqr(m) } ?: m.distanceToSqr(c.e))
+        }
+    }
+
+    /** Step data is the mob's entity id, or 0 for a torch spot. */
+    private fun mob(c: Ctx, step: Step) = (c.level.getEntity(step.data) as? Mob)?.takeIf { hunts(c, it) }
+
+    override fun keepsSupplies(c: Ctx) = c.w.supplies.isNotEmpty() && c.w.carried.isEmpty()
+
+    override fun plan(c: Ctx): Step? {
+        threat(c)?.let { return Step(it.blockPosition(), Step.Kind.WORK, it.id) }
+        if (c.carriedFull()) return Step(c.s.pos, Step.Kind.CHEST)
+        if (c.s.queue.isEmpty()) return null
+        if (c.w.supplies.none { it.`is`(Items.TORCH) }) {
+            if (Inv.contains(c.storage) { it.`is`(Items.TORCH) }) return Step(c.s.pos, Step.Kind.CHEST)
+            c.status("foremon.status.need_item", ItemStack(Items.TORCH).hoverName.string)
+            return null
+        }
+        return take(c)?.let { Step(it, Step.Kind.WORK) }
+    }
+
+    override fun atChest(c: Ctx) {
+        if (c.s.queue.isEmpty() || c.w.supplies.any { it.`is`(Items.TORCH) }) return
+        val got = Inv.extract(c.storage, Items.TORCH, min(c.capacity(), 64))
+        if (!got.isEmpty) c.w.supplies.add(got)
+    }
+
+    override fun follow(c: Ctx, step: Step): BlockPos? = if (step.data == 0) step.pos else mob(c, step)?.blockPosition()
+
+    override fun stillValid(c: Ctx, step: Step): Boolean {
+        if (step.data == 0) return match(c, step.pos, c.level.getBlockState(step.pos))
+        return (mob(c, step) ?: return false).distanceTo(c.e) <= Ticker.reach(c) + 2
+    }
+
+    // A swing is quicker than placing a torch.
+    override fun hardness(c: Ctx, step: Step) = if (step.data == 0) 1.0 else 0.5
+
+    override fun act(c: Ctx, step: Step): Boolean = if (step.data == 0) light(c, step.pos.above()) else strike(c, step)
+
+    private fun strike(c: Ctx, step: Step): Boolean {
+        val m = mob(c, step) ?: return false
+        if (m.distanceTo(c.e) > Ticker.reach(c) + 2) return false
+        // Harder hits with level; how often it swings comes from its rating, as for every job.
+        val damage = 3f + c.p.level / 8f
+        if (!m.hurt(c.level.damageSources().mobAttack(c.e), damage)) return false
+        m.knockback(0.5, c.e.x - m.x, c.e.z - m.z)
+        // Cleave (level perk): the same swing catches other mobs close by.
+        var more = c.profile.unlock(Job.GUARD, "cleave", 1.0).toInt() - 1
+        if (more > 0) for (o in c.level.getEntitiesOfClass(Mob::class.java, m.boundingBox.inflate(2.5)) { it !== m && hunts(c, it) }) {
+            if (more-- <= 0) break
+            o.hurt(c.level.damageSources().mobAttack(c.e), damage)
+        }
+        c.level.sendParticles(ParticleTypes.CRIT, m.x, m.y + m.bbHeight * 0.6, m.z, 8, 0.3, 0.3, 0.3, 0.2)
+        c.level.playSound(null, m.blockPosition(), SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.NEUTRAL, 0.8f, 1.2f)
+        return true
+    }
+
+    private fun light(c: Ctx, at: BlockPos): Boolean {
+        val torch = c.w.supplies.firstOrNull { it.`is`(Items.TORCH) } ?: return false
+        if (!c.level.getBlockState(at).isAir || !TORCH.canSurvive(c.level, at)) return false
+        if (!Protection.canPlace(c.level, c.s, at)) { c.s.skip[at.below()] = c.now + 6000; c.status("foremon.status.not_allowed", "${at.x} ${at.y} ${at.z}"); return false }
+        torch.shrink(1)
+        c.w.supplies.removeIf { it.isEmpty }
+        c.level.setBlockAndUpdate(at, TORCH)
+        c.level.playSound(null, at, TORCH.soundType.placeSound, SoundSource.BLOCKS, 1f, 1f)
+        Net.fx(c.level, c.e, Net.FX_PLACE, at, Block.getId(TORCH))
+        Protection.audit(c.level, c.s, "placed", at, TORCH)
         return true
     }
 }

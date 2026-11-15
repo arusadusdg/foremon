@@ -153,6 +153,18 @@
         "id": "multi",
         "value": 4
       }
+    ],
+    "guard": [
+      {
+        "level": 25,
+        "id": "cleave",
+        "value": 2
+      },
+      {
+        "level": 45,
+        "id": "cleave",
+        "value": 3
+      }
     ]
   },
   "capability_abilities": {

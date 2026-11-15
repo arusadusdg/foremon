@@ -2,6 +2,16 @@
 
 ## 1.2.0
 
+### Guard (new job)
+- Guards fight off hostile mobs in the work area, the ones going for a villager or a player first, then the ones
+  closest to a villager. Neutral mobs that leave you alone, and mobs with a name tag, are left alone.
+- They put torches from the chest wherever a mob could spawn (no block light), on the ground and in buildings, not
+  in deep caves. Loot from the mobs they beat goes into the chest.
+- The Guard site has a **Map** tab: a map of the work area seen from above. Drag on it to draw green boxes (only
+  here) or red boxes (keep out), one set for torches and one for hunting. Right-click a box to remove it.
+- Level perk **Cleave** (level 25 and 45): one swing hits up to 2, then 3 mobs. New skill **Vigilance** (Labour
+  branch): +10% Guard speed per level.
+
 ### Hauling
 - Haulers fly their routes for real when the world is running all the way along them: depot, the chest they take
   from, the chest they deliver to and back, carrying the load in their paws.

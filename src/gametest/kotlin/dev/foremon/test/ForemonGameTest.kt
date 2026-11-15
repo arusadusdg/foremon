@@ -12,7 +12,9 @@ import dev.foremon.world.Site
 import dev.foremon.world.SiteStore
 import dev.foremon.world.Worker
 import dev.foremon.world.Workers
+import dev.foremon.world.Zone
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest
+import net.minecraft.world.entity.EntityType
 import net.minecraft.core.BlockPos
 import net.minecraft.gametest.framework.GameTest
 import net.minecraft.gametest.framework.GameTestAssertException
@@ -750,6 +752,46 @@ class ForemonGameTest : FabricGameTest {
     }
 
     // ------------------------------------------------------------ skill upgrades (own batch: they change the shared test owner)
+
+    // Guards hunt everything hostile in reach, so each guard test runs in a batch of its own.
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 800, batch = "guard_fight")
+    fun guardsFightOffMobsButNotInKeepOutBoxes(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.GUARD)
+        val open = helper.spawnWithNoFreeWill(EntityType.HUSK, BlockPos(5, 1, 2))
+        val kept = helper.spawnWithNoFreeWill(EntityType.HUSK, BlockPos(5, 1, 6))
+        val k = kept.blockPosition()
+        s.zones.add(Zone(Zone.PATROL, false, k.x - 1, k.z - 1, k.x + 1, k.z + 1))
+        worker(helper, s, "machamp", 50)
+        s.active = true
+        helper.succeedWhen {
+            if (open.isAlive) fail("the husk in the open is still standing")
+            if (!kept.isAlive || kept.health < kept.maxHealth) fail("the husk inside the keep-out box was attacked")
+            cleanup(helper, s); kept.discard()
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "guard_torch")
+    fun guardsLightDarkSpotsButNotInKeepOutBoxes(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.GUARD)
+        put(helper, s, ItemStack(Items.TORCH, 16))
+        // No torches on the far half of the floor or anywhere past it.
+        val keep = helper.absolutePos(BlockPos(4, 0, 0)).x
+        s.zones.add(Zone(Zone.TORCHES, false, keep, s.pos.z - 20, s.pos.x + 20, s.pos.z + 20))
+        worker(helper, s, "machop", 30)
+        s.active = true
+        helper.succeedWhen {
+            var lit = 0
+            for (p in BlockPos.betweenClosed(s.pos.offset(-9, -4, -9), s.pos.offset(9, 6, 9))) if (helper.level.getBlockState(p).`is`(Blocks.TORCH)) {
+                if (p.x >= keep) fail("a torch went into the keep-out box at ${p.toShortString()}")
+                lit++
+            }
+            if (lit == 0) fail("no torch yet")
+            if (count(helper, s.pos, Items.TORCH) + s.workers.sumOf { w -> w.supplies.sumOf { it.count } } != 16 - lit) fail("torches were lost or made up")
+            cleanup(helper, s)
+        }
+    }
 
     private fun withSkill(helper: GameTestHelper, node: String, level: Int = 1) { Rules.state(helper.level.server, owner).bought[node] = level }
     private fun dropSkill(helper: GameTestHelper, node: String) { Rules.state(helper.level.server, owner).bought.remove(node) }

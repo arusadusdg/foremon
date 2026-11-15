@@ -173,11 +173,11 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
         "leaf_sweep" to listOf(Items.OAK_LEAVES), "timber" to listOf(Items.IRON_AXE, Items.DIAMOND_AXE, Items.NETHERITE_AXE),
         "vein" to listOf(Items.RAW_COPPER, Items.RAW_IRON, Items.RAW_GOLD), "sweep" to listOf(Items.WHEAT, Items.HAY_BLOCK),
         "batch" to listOf(Items.FURNACE, Items.BLAST_FURNACE), "load" to listOf(Items.BUNDLE, Items.CHEST_MINECART),
-        "multi" to listOf(Items.BRICKS, Items.SCAFFOLDING),
+        "multi" to listOf(Items.BRICKS, Items.SCAFFOLDING), "cleave" to listOf(Items.IRON_SWORD, Items.DIAMOND_SWORD),
     )
     private val perkBackground = mapOf(
         Job.LUMBER to "husbandry", Job.FARMING to "husbandry", Job.MINING to "stone", Job.DEMOLITION to "stone",
-        Job.SMELTING to "nether", Job.BUILDING to "adventure", Job.SORTING to "end", Job.HAULING to "adventure",
+        Job.SMELTING to "nether", Job.BUILDING to "adventure", Job.SORTING to "end", Job.HAULING to "adventure", Job.GUARD to "adventure",
     )
 
     private fun perks(g: GuiGraphics, v: CompoundTag, x: Int, y0: Int, w: Int, h: Int) {
@@ -256,7 +256,9 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
         if (v.contains("notFound")) { text(g, tr("foremon.gui.dex_not_found", v.getString("notFound")), x + 182, y0 + 6, Pal.BAD) }
         if (v.contains("lookup")) {
             val m = v.getCompound("lookup")
-            g.fill(x, y, x + w, y + 40, Pal.CARD)
+            // Four jobs to a row, so the card grows with the number of jobs.
+            val cardH = maxOf(40, 6 + (Job.entries.size + 3) / 4 * 18)
+            g.fill(x, y, x + w, y + cardH, Pal.CARD)
             icon(g, MonIcons.of(m), x + 4, y + 4, 2f)
             text(g, Component.literal(m.getString("name")), x + 40, y + 4)
             text(g, m.getString("types").replace(",", " / "), x + 40, y + 15, Pal.MUTED)
@@ -269,7 +271,7 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
                 if (s == 0) text(g, "-", jx + 20, jy + 4, Pal.BAD) else stars(g, jx + 19, jy + 4, s)
                 if (hover(jx, jy, 60, 16)) tip = lines(tr("foremon.job.${j.key}"))
             }
-            y += 44
+            y += cardH + 4
         }
         text(g, tr("foremon.gui.dex_best"), x, y, Pal.MUTED); y += 11
         val best = v.getCompound("best")

@@ -1,0 +1,41 @@
+{
+  "primary_stats": [
+    "attack",
+    "special_attack"
+  ],
+  "secondary_stat": "speed",
+  "base_ticks": 20,
+  "types": {
+    "fighting": 0.3,
+    "dark": 0.15,
+    "dragon": 0.15,
+    "steel": 0.15,
+    "fire": 0.1,
+    "electric": 0.1,
+    "fairy": 0.1
+  },
+  "abilities": {
+    "intimidate": 0.2,
+    "justified": 0.2,
+    "guts": 0.15,
+    "hugepower": 0.3,
+    "purepower": 0.3,
+    "toughclaws": 0.15,
+    "sheerforce": 0.15,
+    "keeneye": 0.1,
+    "innerfocus": 0.1
+  },
+  "moves": {
+    "closecombat": 0.15,
+    "brickbreak": 0.1,
+    "nightslash": 0.1,
+    "flamethrower": 0.1,
+    "thunderbolt": 0.1,
+    "protect": 0.1,
+    "bulkup": 0.1,
+    "quickattack": 0.05
+  },
+  "size": {
+    "large": 0.1
+  }
+}

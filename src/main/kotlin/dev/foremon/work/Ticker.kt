@@ -240,6 +240,11 @@ object Ticker {
         }
 
         // ---- get there
+        // A moving target (a mob) is followed where it goes; once it is gone the worker thinks again.
+        if (step.kind == Step.Kind.WORK && w.progress == 0 && now % 5 == 0L) {
+            val to = logic.follow(c, step) ?: run { w.step = null; return }
+            if (to != step.pos) { step = Step(to, step.kind, step.data); w.step = step }
+        }
         // A hauler on its flight is away from the depot on purpose.
         val onTrip = step.kind == Step.Kind.WORK && w.progress > 0 && w.path != null
         if (!onTrip && !near(c, step.pos, step.kind == Step.Kind.WORK && logic.anyHeight)) { travel(c, step); return }

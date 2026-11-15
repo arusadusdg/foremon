@@ -44,6 +44,11 @@ jobs = {
                        abilities=dict(sheerforce=.20, moldbreaker=.20, hugepower=.30, purepower=.30, ironfist=.15, reckless=.15),
                        moves=dict(brickbreak=.25, rocksmash=.20, explosion=.15, selfdestruct=.15, earthquake=.15, superpower=.10),
                        size=dict(large=.15)),
+    'guard': dict(primary_stats=['attack', 'special_attack'], secondary_stat='speed', base_ticks=20,
+                  types=dict(fighting=.30, dark=.15, dragon=.15, steel=.15, fire=.10, electric=.10, fairy=.10),
+                  abilities=dict(intimidate=.20, justified=.20, guts=.15, hugepower=.30, purepower=.30, toughclaws=.15, sheerforce=.15, keeneye=.10, innerfocus=.10),
+                  moves=dict(closecombat=.15, brickbreak=.10, nightslash=.10, flamethrower=.10, thunderbolt=.10, protect=.10, bulkup=.10, quickattack=.05),
+                  size=dict(large=.10)),
 }
 for k, v in jobs.items():
     json.dump(v, open(f'{out}/jobs/{k}.json', 'w'), indent=2)
@@ -72,6 +77,7 @@ rules = dict(
         sorting=[dict(level=20, id="load", value=1.5), dict(level=40, id="load", value=2)],
         building=[dict(level=25, id="multi", value=2), dict(level=45, id="multi", value=3)],
         demolition=[dict(level=25, id="multi", value=2), dict(level=45, id="multi", value=4)],
+        guard=[dict(level=25, id="cleave", value=2), dict(level=45, id="cleave", value=3)],
     ),
     capability_abilities=dict(levitate='flight'),
     capability_moves=dict(fly='flight', rockclimb='flight', dive='underwater'),
@@ -117,6 +123,7 @@ N = [
     node('speed_smelting', 'labour', 5, 40, 5, 0, per=.10, icon='minecraft:blast_furnace'),
     node('speed_building', 'labour', 5, 40, 6, 0, per=.10, icon='minecraft:bricks'),
     node('speed_demolition', 'labour', 5, 40, 7, 0, per=.10, icon='minecraft:tnt'),
+    node('speed_guard', 'labour', 5, 40, 8, 0, per=.10, icon='minecraft:iron_sword'),
     node('tree_feller', 'labour', 1, 250, 1, 1, req={'speed_lumber': 2}, icon='minecraft:oak_log'),
     node('bone_meal', 'labour', 3, 120, 1, 2, req={'speed_lumber': 1}, icon='minecraft:bone_meal'),
     node('deep_digging', 'labour', 2, 200, 2, 1, req={'speed_mining': 1}, growth=2.5, icon='minecraft:deepslate_diamond_ore'),
