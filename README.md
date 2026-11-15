@@ -1,10 +1,7 @@
-# Foremon
+# Foremon: Pokemon Workers & Automation for Cobblemon
 
-Put your Cobblemon to work. A Fabric addon for **Cobblemon 1.7.3+** on **Minecraft 1.21.1**.
-
-> **Made with AI.** Foremon was designed by its author and written with the help of an AI coding
-> assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's
-> direction. Every feature listed here is checked by automated tests in a real Minecraft server.
+Cobblemon automation: your Pokemon work for you. A Fabric addon for **Cobblemon 1.7.3+** on **Minecraft 1.21.1**.
+Download: [CurseForge](https://www.curseforge.com/minecraft/mc-mods/foremon) · [Modrinth](https://modrinth.com/mod/foremon) · [GitHub releases](https://github.com/arusadusdg/foremon/releases)
 
 Turn any chest into a job site, assign Pokemon from your party, and they chop trees, dig out
 areas, sort and haul items, farm, smelt, take buildings apart, and build straight from your
@@ -101,3 +98,9 @@ The default data files and the language file are generated: edit `tools/gen_rule
 ## Licence
 
 MIT. Contains no Cobblemon assets.
+
+---
+
+*Foremon was designed by its author and written with the help of an AI coding
+assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's
+direction. Every feature listed here is checked by automated tests in a real Minecraft server.*
