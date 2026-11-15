@@ -26,7 +26,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 > 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 > Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 >
-> It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. I'm happy to set up a test world or answer anything.
+> It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. Happy to answer any questions.
 >
 > Thanks for reading!
 > <your name>
@@ -144,7 +144,7 @@ trees, dig out mines, farm, smelt, haul between chests, guard your village and c
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
 It needs Cobblemon (1.7.3 or newer, tested on 1.8.4 too), Fabric API and Fabric Language Kotlin. Happy to answer
-anything or set up a test world.
+any questions.
 
 Thanks for the lists,
 [your name]
@@ -174,7 +174,6 @@ guards walk a patrol route you draw on a map.
 
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-Happy to set up a test world if that helps.
 [your name]
 
 ### 5. The Sauropod Squad (their Discord)
@@ -346,8 +345,7 @@ guard and craft, and unlock perks as they level.
 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. Happy to set up a
-test world.
+It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4.
 
 Thanks,
 [your name]
