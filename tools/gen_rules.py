@@ -49,6 +49,11 @@ jobs = {
                   abilities=dict(intimidate=.20, justified=.20, guts=.15, hugepower=.30, purepower=.30, toughclaws=.15, sheerforce=.15, keeneye=.10, innerfocus=.10),
                   moves=dict(closecombat=.15, brickbreak=.10, nightslash=.10, flamethrower=.10, thunderbolt=.10, protect=.10, bulkup=.10, quickattack=.05),
                   size=dict(large=.10)),
+    'crafting': dict(primary_stats=['special_attack', 'attack'], secondary_stat='speed', base_ticks=30,
+                     types=dict(psychic=.20, normal=.15, fairy=.15, steel=.15, fighting=.10, ghost=.10),
+                     abilities=dict(technician=.20, skilllink=.15, magician=.15, synchronize=.10, telepathy=.10, unburden=.10),
+                     moves=dict(telekinesis=.15, recycle=.15, psychic=.10, trick=.10, fling=.05),
+                     size=dict(tiny=.05)),
 }
 for k, v in jobs.items():
     json.dump(v, open(f'{out}/jobs/{k}.json', 'w'), indent=2)
@@ -78,6 +83,7 @@ rules = dict(
         building=[dict(level=25, id="multi", value=2), dict(level=45, id="multi", value=3)],
         demolition=[dict(level=25, id="multi", value=2), dict(level=45, id="multi", value=4)],
         guard=[dict(level=25, id="cleave", value=2), dict(level=45, id="cleave", value=3)],
+        crafting=[dict(level=20, id="craft_batch", value=2), dict(level=40, id="craft_batch", value=3)],
     ),
     capability_abilities=dict(levitate='flight'),
     capability_moves=dict(fly='flight', rockclimb='flight', dive='underwater'),
@@ -124,6 +130,7 @@ N = [
     node('speed_building', 'labour', 5, 40, 6, 0, per=.10, icon='minecraft:bricks'),
     node('speed_demolition', 'labour', 5, 40, 7, 0, per=.10, icon='minecraft:tnt'),
     node('speed_guard', 'labour', 5, 40, 8, 0, per=.10, icon='minecraft:iron_sword'),
+    node('speed_crafting', 'labour', 5, 40, 9, 0, per=.10, icon='minecraft:crafting_table'),
     node('sharp_claws', 'labour', 3, 90, 8, 1, per=.25, req={'speed_guard': 1}, icon='minecraft:diamond_sword'),
     node('lookout', 'labour', 3, 80, 8, 2, base=0, per=8, req={'speed_guard': 1}, icon='minecraft:spyglass'),
     node('green_thumb', 'labour', 3, 90, 4, 2, per=.10, req={'speed_farming': 2}, icon='minecraft:bone_meal'),

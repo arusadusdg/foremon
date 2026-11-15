@@ -105,3 +105,6 @@ loom {
 		}
 	}
 }
+
+// Every game test run starts from a fresh world: Pokemon that earlier runs left in the test PC would fill it up.
+tasks.matching { it.name == "runGametest" }.configureEach { doFirst { delete layout.buildDirectory.dir("gametest/world") } }

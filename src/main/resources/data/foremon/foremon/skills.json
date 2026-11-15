@@ -235,6 +235,18 @@
       "y": 0
     },
     {
+      "id": "speed_crafting",
+      "branch": "labour",
+      "max": 5,
+      "base_cost": 40,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:crafting_table",
+      "x": 9,
+      "y": 0
+    },
+    {
       "id": "sharp_claws",
       "branch": "labour",
       "max": 3,

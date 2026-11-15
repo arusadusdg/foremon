@@ -199,6 +199,7 @@ object Actions {
                 if (chestPos == s.pos) s.ball = ball else if (chestPos in s.links) s.chest(chestPos).ball = ball
             }
             "route_remove" -> { s.removeRoute(t.getInt("index")); reset(s) }
+            "fill_requests" -> { s.fillRequests = !s.fillRequests; reset(s) }
             "route_crew" -> crewToggle(player.server, s, t.getInt("index"), t.getUUID("mon"))?.let { Foremon.tell(player, it[0], *it.drop(1).toTypedArray()) }
             // The screen has closed itself: no site view back, or it would open again.
             "route_start" -> {
@@ -262,6 +263,13 @@ object Actions {
         }
         store.setDirty()
         sendSite(player, level, s)
+    }
+
+    /** A site's open requests, as item id and count. */
+    private fun requestList(s: Site) = ListTag().also { l ->
+        for ((item, r) in s.requests) l.add(CompoundTag().also { c ->
+            c.putString("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString()); c.putInt("count", r.count)
+        })
     }
 
     /** How far the Guard map reaches from the chest: the work area, plus how far guards hunt past it (Lookout). */
@@ -351,6 +359,17 @@ object Actions {
                 c.put("crew", ListTag().also { cl -> for (w in s.workers) if (s.crews[w.pokemonId] == (a to b)) cl.add(StringTag.valueOf(w.pokemonId.toString())) })
             })
         })
+        // What this site is asking haulers for; and for a depot, what the owner's sites in range are asking for.
+        t.put("requests", requestList(s))
+        t.putBoolean("fillRequests", s.fillRequests)
+        if (s.job == Job.HAULING) t.put("openRequests", ListTag().also { l ->
+            val reach = Rules.skill(server, s.owner, "supply_lines")
+            for (o in SiteStore.of(level).sites.values) if (o !== s && o.owner == s.owner && o.requests.isNotEmpty() && o.pos.distSqr(s.pos) <= reach * reach)
+                for ((item, r) in o.requests) l.add(CompoundTag().also { c ->
+                    c.putString("item", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString()); c.putInt("count", r.count)
+                    c.putString("job", o.job.key); c.putInt("dist", kotlin.math.sqrt(o.pos.distSqr(s.pos)).toInt())
+                })
+        })
         t.putIntArray("zones", Zone.pack(s.zones))
         t.putLongArray("patrol", s.patrol.map { it.asLong() })
         t.putInt("mapRadius", mapRadius(level, s))
@@ -420,6 +439,7 @@ object Actions {
                     c.putString("status", s.status); c.putString("statusArg", s.statusArg)
                     c.putInt("workers", s.workers.size); c.putLong("done", s.done)
                     s.plan?.let { p -> c.putInt("planSize", p.size); c.putInt("planIndex", p.index) }
+                    c.put("requests", requestList(s))
                     c.put("mons", ListTag().also { ml -> s.workers.forEach { w -> w.pokemon?.let { ml.add(mon(it)) } } })
                 })
             }

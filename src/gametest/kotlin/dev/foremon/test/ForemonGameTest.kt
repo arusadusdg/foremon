@@ -48,6 +48,8 @@ class ForemonGameTest : FabricGameTest {
         val pos = helper.absolutePos(rel)
         val s = Site(pos, owner, "tester")
         s.job = job
+        // Test depots keep to their own routes: requests would reach every other test's sites (same owner) in the batch.
+        if (job == Job.HAULING) s.fillRequests = false
         SiteStore.of(helper.level).sites[pos] = s
         return s
     }
@@ -840,6 +842,39 @@ class ForemonGameTest : FabricGameTest {
             if (lit == 0) fail("no torch yet")
             if (count(helper, s.pos, Items.TORCH) + s.workers.sumOf { w -> w.supplies.sumOf { it.count } } != 16 - lit) fail("torches were lost or made up")
             cleanup(helper, s)
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 800, batch = "crafting")
+    fun craftingMakesWhatTheFilterAsksFor(helper: GameTestHelper) {
+        setup(helper)
+        val s = site(helper, BlockPos(1, 1, 1), Job.CRAFTING)
+        s.filter.only = true; s.filter.entries.add("minecraft:oak_planks"); s.filter.changed()
+        put(helper, s, ItemStack(Items.OAK_LOG, 4))
+        worker(helper, s, "machop", 30)
+        s.active = true
+        helper.succeedWhen {
+            if (count(helper, s.pos, Items.OAK_PLANKS) < 16) fail("the planks are not made yet")
+            if (count(helper, s.pos, Items.OAK_LOG) != 0) fail("logs are left over")
+            cleanup(helper, s)
+        }
+    }
+
+    // The whole chain: the crafter is short of coal and asks, the depot's hauler brings it from another site, the crafter makes torches.
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "requests")
+    fun haulersBringWhatACrafterAsksFor(helper: GameTestHelper) {
+        setup(helper)
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING).also { it.fillRequests = true }
+        val crafter = site(helper, BlockPos(6, 1, 1), Job.CRAFTING)
+        crafter.filter.only = true; crafter.filter.entries.add("minecraft:torch"); crafter.filter.changed()
+        val store = site(helper, BlockPos(6, 1, 6), Job.LUMBER)
+        put(helper, crafter, ItemStack(Items.STICK, 4))
+        put(helper, store, ItemStack(Items.COAL, 8))
+        worker(helper, depot, "pidgey"); worker(helper, crafter, "machop", 30)
+        depot.active = true; crafter.active = true
+        helper.succeedWhen {
+            if (count(helper, crafter.pos, Items.TORCH) < 4) fail("no torches yet: the coal has to be asked for, brought, then crafted")
+            for (st in listOf(depot, crafter, store)) cleanup(helper, st)
         }
     }
 

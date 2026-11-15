@@ -165,6 +165,18 @@
         "id": "cleave",
         "value": 3
       }
+    ],
+    "crafting": [
+      {
+        "level": 20,
+        "id": "craft_batch",
+        "value": 2
+      },
+      {
+        "level": 40,
+        "id": "craft_batch",
+        "value": 3
+      }
     ]
   },
   "capability_abilities": {

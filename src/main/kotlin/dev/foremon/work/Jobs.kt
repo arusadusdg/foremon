@@ -12,6 +12,8 @@ import dev.foremon.world.Site
 import dev.foremon.world.Step
 import dev.foremon.world.Workers
 import dev.foremon.world.Zone
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.sounds.SoundEvents
@@ -32,6 +34,7 @@ import net.minecraft.tags.FluidTags
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.item.crafting.CraftingRecipe
 import net.minecraft.world.item.crafting.RecipeType
 import net.minecraft.world.item.crafting.SingleRecipeInput
 import net.minecraft.world.level.block.Block
@@ -211,6 +214,7 @@ object Jobs {
         Job.BUILDING -> Building
         Job.DEMOLITION -> Demolition
         Job.GUARD -> Guard
+        Job.CRAFTING -> Crafting
     }
 
     fun box(s: Site): Pair<BlockPos, BlockPos>? {
@@ -700,9 +704,45 @@ object Courier : JobLogic() {
         if (loaded(c, i)) route(c, i)?.let(::ready) == true
         else (c.s.routeIdle[i] ?: 0L) <= c.now
 
+    /** Step data for a request load (see [fetch]) instead of a route number. */
+    private const val FETCH = -1
+
+    /**
+     * Requests: the next thing one of the owner's other job sites is short of that one of their chests has, within Supply
+     * Lines range and in loaded chunks. Another hauler of this depot already on the same request leaves it alone.
+     */
+    private fun fetch(c: Ctx): dev.foremon.world.Fetch? {
+        if (!c.s.fillRequests) return null
+        val all = dev.foremon.world.SiteStore.of(c.level).sites.values
+        if (all.none { it.requests.isNotEmpty() }) return null
+        val reach = c.skill("supply_lines")
+        val sites = all.filter {
+            it.owner == c.s.owner && c.level.isLoaded(it.pos) && it.pos.distSqr(c.s.pos) <= reach * reach
+        }
+        for (asker in sites) {
+            if (asker === c.s || asker.requests.isEmpty()) continue
+            for ((item, req) in asker.requests) {
+                if (req.count <= 0) continue
+                if (c.s.workers.any { it !== c.w && it.fetch?.let { f -> f.to == asker.pos && f.item == item } == true }) continue
+                // Where to take it from: this depot and its chests first, then any other job site's chest.
+                val from = (listOf(c.s.pos) + c.s.links + sites.filter { it !== asker && it !== c.s }.map { it.pos }).firstOrNull { p ->
+                    p != asker.pos && p !in asker.links && c.level.isLoaded(p) && p.distSqr(c.s.pos) <= reach * reach &&
+                        (p == c.s.pos || Protection.ownerMayUse(c.level, c.s, p)) &&
+                        Inv.storage(c.level, p)?.let { st -> Inv.contains(st) { it.item in req.accepts } } == true
+                } ?: continue
+                return dev.foremon.world.Fetch(from, asker.pos, item, req.accepts, req.count)
+            }
+        }
+        return null
+    }
+
+    private fun fetchReady(c: Ctx, f: dev.foremon.world.Fetch?): Boolean = f != null && c.level.isLoaded(f.from) && c.level.isLoaded(f.to) &&
+        dev.foremon.world.SiteStore.of(c.level).sites[f.to]?.requests?.containsKey(f.item) == true &&
+        Inv.storage(c.level, f.from)?.let { st -> Inv.contains(st) { it.item in f.accepts } } == true
+
     override fun plan(c: Ctx): Step? {
+        c.w.fetch = null
         val routes = c.s.routes
-        if (routes.isEmpty()) { c.status("foremon.status.make_routes"); return null }
         // Dispatch: a hauler with a route of its own works only that one; the rest take every route in turn.
         val mine = c.s.crews[c.w.pokemonId]?.let { routes.indexOf(it) } ?: -1
         if (mine >= 0) {
@@ -710,6 +750,10 @@ object Courier : JobLogic() {
             c.status("foremon.status.routes_idle")
             return null
         }
+        // A site waiting for something is waiting now: requests come before the routes.
+        c.w.fetch = fetch(c)
+        if (c.w.fetch != null) return Step(c.s.pos, Step.Kind.WORK, FETCH)
+        if (routes.isEmpty()) { c.status(if (c.s.fillRequests) "foremon.status.requests_idle" else "foremon.status.make_routes"); return null }
         for (k in routes.indices) {
             val i = (c.s.routeCursor + k) % routes.size
             if (worth(c, i)) {
@@ -723,22 +767,35 @@ object Courier : JobLogic() {
 
     /** A load takes longer the further it goes. */
     override fun hardness(c: Ctx, step: Step): Double {
-        val (from, to) = c.s.routes.getOrNull(step.data) ?: return TRIP_BASE
+        val (from, to) = ends(c, step) ?: return TRIP_BASE
         // Express Lanes (skill): every load is quicker.
         return (TRIP_BASE + kotlin.math.sqrt(from.distSqr(to)) / BLOCKS_PER_TRIP) / (1.0 + c.skill("express_lanes"))
     }
 
-    override fun stillValid(c: Ctx, step: Step) = worth(c, step.data)
+    override fun stillValid(c: Ctx, step: Step) = if (step.data == FETCH) fetchReady(c, c.w.fetch) else worth(c, step.data)
+
+    /** Where a load goes from and to: a route's two chests, or a request load's. */
+    private fun ends(c: Ctx, step: Step): Pair<BlockPos, BlockPos>? =
+        if (step.data == FETCH) c.w.fetch?.let { it.from to it.to } else c.s.routes.getOrNull(step.data)
 
     /**
      * A route the world is running all the way along is flown for real: depot, chest it takes from, chest it delivers to,
      * depot. Anywhere else the hauler is out of sight on the road and shows on the depot board instead.
      */
     override fun trip(c: Ctx, step: Step): List<net.minecraft.world.phys.Vec3> {
-        val (from, to) = c.s.routes.getOrNull(step.data) ?: return emptyList()
-        c.w.hauling = if (!loaded(c, step.data)) ItemStack.EMPTY else route(c, step.data)?.let { r ->
+        val (from, to) = ends(c, step) ?: return emptyList()
+        val f = c.w.fetch
+        c.w.hauling = if (step.data == FETCH) {
+            if (f == null) ItemStack.EMPTY else Inv.storage(c.level, f.from)?.let { Inv.peek(it, f.count, { s -> s.item in f.accepts }) } ?: ItemStack.EMPTY
+        } else if (!loaded(c, step.data)) ItemStack.EMPTY else route(c, step.data)?.let { r ->
             Inv.peek(r.from, (c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt(), r.test)
         } ?: ItemStack.EMPTY
+        // A request can go anywhere in range, past the box the hauler may roam in (Cobblemon would call it back): out of sight.
+        if (step.data == FETCH) {
+            val (lo, hi) = Workers.tetherBox(c.level, c.s)
+            val box = net.minecraft.world.phys.AABB.encapsulatingFullBlocks(lo, hi)
+            if (!box.contains(net.minecraft.world.phys.Vec3.atCenterOf(from)) || !box.contains(net.minecraft.world.phys.Vec3.atCenterOf(to))) return emptyList()
+        }
         val home = c.e.position()
         val path = listOf(home, net.minecraft.world.phys.Vec3.atCenterOf(from).add(0.0, 1.0, 0.0),
             net.minecraft.world.phys.Vec3.atCenterOf(to).add(0.0, 1.0, 0.0), home)
@@ -751,6 +808,7 @@ object Courier : JobLogic() {
     }
 
     override fun act(c: Ctx, step: Step): Boolean {
+        if (step.data == FETCH) return deliver(c)
         val far = !loaded(c, step.data)
         val r = route(c, step.data, load = true)
         val stack = if (r == null) ItemStack.EMPTY else {
@@ -769,6 +827,28 @@ object Courier : JobLogic() {
         if (!rest.isEmpty) Inv.insert(r.from, rest).let { if (!it.isEmpty) c.carry(it) }
         Net.fx(c.level, c.e, Net.FX_DELIVER, c.s.pos, 0)
         return rest.count < moved
+    }
+
+    /** Finishes a request load: up to what was asked for, from the chest that has it to the site that asked. */
+    private fun deliver(c: Ctx): Boolean {
+        val f = c.w.fetch ?: return false
+        c.w.fetch = null
+        if (!fetchReady(c, f)) return false
+        val from = Inv.storage(c.level, f.from) ?: return false
+        val to = Inv.storage(c.level, f.to) ?: return false
+        val load = minOf((c.capacity() * c.profile.unlock(c.s.job, "load", 1.0)).toInt(), f.count)
+        val stack = Inv.extract(from, load) { it.item in f.accepts }
+        if (stack.isEmpty) return false
+        val rest = Inv.insert(to, stack)
+        val moved = stack.count - rest.count
+        if (!rest.isEmpty) Inv.insert(from, rest).let { if (!it.isEmpty) c.carry(it) }
+        c.s.hauled += moved
+        dev.foremon.world.SiteStore.of(c.level).sites[f.to]?.requests?.let { reqs ->
+            val r = reqs[f.item]
+            if (r != null) { r.count -= moved; if (r.count <= 0) reqs.remove(f.item) }
+        }
+        Net.fx(c.level, c.e, Net.FX_DELIVER, c.s.pos, 0)
+        return moved > 0
     }
 }
 
@@ -951,6 +1031,8 @@ object Building : JobLogic() {
         }
         if (c.w.supplies.isEmpty() && missing != null) {
             c.status("foremon.status.need_item", ItemStack(missing).hoverName.string)
+            // Haulers bring it from your other chests, if a Hauling site fills requests.
+            c.request(missing, maxOf(wanted[missing] ?: 0, 16))
             c.w.planAt = c.now + 60
         }
     }
@@ -1056,7 +1138,7 @@ object Guard : JobLogic() {
         if (c.s.queue.isNotEmpty()) {
             if (c.w.supplies.any { it.`is`(Items.TORCH) }) take(c)?.let { return Step(it, Step.Kind.WORK) }
             else if (Inv.contains(c.storage) { it.`is`(Items.TORCH) }) return Step(c.s.pos, Step.Kind.CHEST)
-            else c.status("foremon.status.need_item", ItemStack(Items.TORCH).hoverName.string)
+            else { c.status("foremon.status.need_item", ItemStack(Items.TORCH).hoverName.string); c.request(Items.TORCH, 32) }
         }
         return patrol(c)
     }
@@ -1121,5 +1203,105 @@ object Guard : JobLogic() {
         Net.fx(c.level, c.e, Net.FX_PLACE, at, Block.getId(TORCH))
         Protection.audit(c.level, c.s, "placed", at, TORCH)
         return true
+    }
+}
+
+// ============================================================================================ Crafting
+
+/**
+ * Makes the items listed in the site's filter from what is in its chests, with the game's own crafting recipes, until
+ * the chests hold a stack of each. Whatever it is short of to make one, it asks haulers for (see [Courier]).
+ */
+object Crafting : JobLogic() {
+    // ponytail: one stack of each target; a per-target amount can come later if players want it.
+    private const val STOCK = 64
+    private val cache = HashMap<Item, List<CraftingRecipe>>()
+    private var cacheVersion = -1
+
+    private fun recipes(c: Ctx, item: Item): List<CraftingRecipe> {
+        if (cacheVersion != Rules.version) { cache.clear(); cacheVersion = Rules.version }
+        return cache.getOrPut(item) {
+            c.level.recipeManager.getAllRecipesFor(RecipeType.CRAFTING).map { it.value() }
+                .filter { r -> !r.isSpecial && r.getResultItem(c.level.registryAccess()).`is`(item) && r.ingredients.any { !it.isEmpty } }
+        }
+    }
+
+    /** The items the filter lists. A tag cannot be crafted: a recipe makes one exact item. */
+    private fun targets(c: Ctx): List<Item> = c.s.filter.entries.mapNotNull { e ->
+        if (e.startsWith("#")) null else ResourceLocation.tryParse(e)?.let { BuiltInRegistries.ITEM.getOptional(it).orElse(null) }
+    }
+
+    private fun count(c: Ctx, item: Item): Long {
+        var n = 0L
+        for (v in c.storage.nonEmptyViews()) if (v.resource.item == item) n += v.amount
+        return n
+    }
+
+    private class Match(val recipe: CraftingRecipe, val take: Map<ItemVariant, Long>)
+
+    /** A recipe for [item] whose ingredients are all in the chests, and what it uses up; or null, noting what is short in [missing]. */
+    /** What the chests hold, by kind. */
+    private fun stock(c: Ctx): Map<ItemVariant, Long> {
+        val have = LinkedHashMap<ItemVariant, Long>()
+        for (v in c.storage.nonEmptyViews()) have.merge(v.resource, v.amount, Long::plus)
+        return have
+    }
+
+    private fun match(c: Ctx, item: Item, missing: Array<net.minecraft.world.item.crafting.Ingredient?>, have: Map<ItemVariant, Long> = stock(c)): Match? {
+        for (r in recipes(c, item)) {
+            val left = HashMap(have); val take = HashMap<ItemVariant, Long>()
+            var ok = true
+            for (ing in r.ingredients) {
+                if (ing.isEmpty) continue
+                val v = left.entries.firstOrNull { (k, n) -> n > 0 && ing.test(k.toStack()) }?.key
+                if (v == null) { ok = false; if (missing[0] == null) missing[0] = ing; break }
+                left[v] = left[v]!! - 1
+                take.merge(v, 1L, Long::plus)
+            }
+            if (ok) return Match(r, take)
+        }
+        return null
+    }
+
+    override fun plan(c: Ctx): Step? {
+        if (c.w.carried.isNotEmpty()) return Step(c.s.pos, Step.Kind.CHEST)
+        val targets = targets(c)
+        if (targets.isEmpty()) { c.status("foremon.status.craft_what"); return null }
+        val missing = arrayOfNulls<net.minecraft.world.item.crafting.Ingredient>(1)
+        val have = stock(c)
+        for ((i, t) in targets.withIndex()) {
+            if (have.entries.sumOf { (v, n) -> if (v.item == t) n else 0L } >= STOCK) continue
+            if (match(c, t, missing, have) != null) return Step(c.s.pos, Step.Kind.WORK, i)
+        }
+        val short = missing[0]?.items?.map { it.item }?.distinct().orEmpty()
+        if (short.isNotEmpty()) { c.status("foremon.status.need_item", ItemStack(short[0]).hoverName.string); c.request(short[0], 16, short) }
+        else c.status("foremon.status.stocked")
+        return null
+    }
+
+    override fun stillValid(c: Ctx, step: Step) = targets(c).getOrNull(step.data)?.let { match(c, it, arrayOfNulls(1)) != null } == true
+
+    override fun act(c: Ctx, step: Step): Boolean {
+        val item = targets(c).getOrNull(step.data) ?: return false
+        // Assembly Line (level perk): several crafts in one action.
+        val times = c.profile.unlock(Job.CRAFTING, "craft_batch", 1.0).toInt()
+        var made = 0
+        for (k in 0 until times) {
+            if (count(c, item) + c.w.count(c.w.carried) >= STOCK) break
+            val m = match(c, item, arrayOfNulls(1)) ?: break
+            // Every ingredient in one go, or none of them: leaving the block without commit puts everything back.
+            var took = true
+            Transaction.openOuter().use { tx ->
+                for ((v, n) in m.take) if (c.storage.extract(v, n, tx) != n) { took = false; return@use }
+                tx.commit()
+            }
+            if (!took) break
+            // Buckets and the like come back, as at a crafting table.
+            for ((v, n) in m.take) v.item.craftingRemainingItem?.let { rem -> c.carry(ItemStack(rem, n.toInt())) }
+            c.carry(m.recipe.getResultItem(c.level.registryAccess()).copy())
+            made++
+        }
+        if (made > 0) Net.fx(c.level, c.e, Net.FX_SMELT, c.e.blockPosition(), 0)
+        return made > 0
     }
 }

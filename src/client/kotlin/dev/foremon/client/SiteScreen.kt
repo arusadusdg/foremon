@@ -150,6 +150,13 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         if (hover(b.lx, y, b.pw - 18, 14)) tip = lines(tr("foremon.gui.links.title"), muted(tr(if (logistics) "foremon.gui.links.hint_logistics" else "foremon.gui.links.hint")), muted(tr("foremon.gui.links.how")))
         button(g, b.lx + b.pw - 14, y, 14, 14, Component.literal("x"), enabled = links > 0, tooltip = lines(tr("foremon.gui.clear_links"))) { op("clear_links") }
         y += 18
+        // What this site is asking haulers for.
+        val reqs = data.getList("requests", Tag.TAG_COMPOUND.toInt())
+        if (reqs.size > 0) {
+            text(g, tr("foremon.gui.asking_for"), b.lx, y, Pal.WARN)
+            if (hover(b.lx, y, b.pw, 9)) tip = lines(tr("foremon.gui.asking_for"), muted(tr("foremon.gui.asking_for.hint")))
+            requestIcons(g, reqs, b.lx, y + 10, b.pw); y += 30
+        }
         when (job) {
             Job.MINING, Job.DEMOLITION -> {
                 if (data.contains("lo") && data.getBoolean("areaDone")) {
@@ -233,15 +240,17 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
     private fun jobsPage(g: GuiGraphics, b: Book) {
         ribbon(g, b, tr("foremon.gui.tab_jobs"))
         hoverJob = null
+        // Rows shrink a little on small screens so every job fits.
+        val rh = min(20, (b.bottom - b.top) / Job.entries.size)
         for ((i, j) in Job.entries.withIndex()) {
-            val y = b.top + i * 20
-            val hot = hover(b.lx, y, b.pw, 18)
+            val y = b.top + i * rh
+            val hot = hover(b.lx, y, b.pw, rh - 2)
             if (hot) hoverJob = j
-            row(g, b.lx, y, b.pw, 18, hot, selected = j == job)
-            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), b.lx + 2, y + 1)
-            text(g, tr("foremon.job.${j.key}"), b.lx + 22, y + 5, if (j == job) Pal.INK else Pal.INK)
-            if (j == job) text(g, "✔", b.lx + b.pw - 10, y + 5, Pal.GOOD)
-            click(b.lx, y, b.pw, 18) { op("job") { t -> t.putString("job", j.key) } }
+            row(g, b.lx, y, b.pw, rh - 2, hot, selected = j == job)
+            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), b.lx + 2, y + (rh - 18) / 2)
+            text(g, tr("foremon.job.${j.key}"), b.lx + 22, y + (rh - 10) / 2, Pal.INK)
+            if (j == job) text(g, "✔", b.lx + b.pw - 10, y + (rh - 10) / 2, Pal.GOOD)
+            click(b.lx, y, b.pw, rh - 2) { op("job") { t -> t.putString("job", j.key) } }
         }
         // Right page: the job under the mouse (or the current one), and who in your party is best at it.
         val shown = hoverJob ?: job
@@ -460,9 +469,28 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
             else -> {
                 heading(g, tr("foremon.gui.routes_new"), b.rx + b.pw / 2, b.rtop + 2)
                 button(g, b.rx, b.rtop + 16, b.pw, 18, tr("foremon.gui.route_add"), accent = true, tooltip = lines(tr("foremon.gui.route_add_tip"))) { picking = true; pickFrom = null; crewFor = -1 }
-                var y = b.rtop + 42
-                y += para(g, tr("foremon.gui.routes.how"), b.rx, y, b.pw) + 8
-                para(g, muted(tr("foremon.gui.crew_how", data.getInt("dispatch"))), b.rx, y, b.pw, Pal.MUTED)
+                var y = b.rtop + 40
+                y += para(g, muted(tr("foremon.gui.routes.how")), b.rx, y, b.pw, Pal.MUTED, 4) + 6
+                // Requests: the depot's haulers also bring your other sites what they ask for.
+                val fill = data.getBoolean("fillRequests")
+                heading(g, tr("foremon.gui.requests"), b.rx + b.pw / 2, y); y += 12
+                button(g, b.rx, y, b.pw, 16, tr(if (fill) "foremon.gui.fill_requests_on" else "foremon.gui.fill_requests_off"), accent = fill,
+                    tooltip = lines(tr("foremon.gui.fill_requests.hint"))) { op("fill_requests") }
+                y += 20
+                val open = data.getList("openRequests", Tag.TAG_COMPOUND.toInt())
+                if (open.isEmpty()) para(g, muted(tr("foremon.gui.requests_none")), b.rx, y, b.pw, Pal.MUTED, 2)
+                for (i in 0 until open.size) {
+                    if (y + 17 > b.bottom) { text(g, tr("foremon.gui.more", open.size - i), b.rx, y, Pal.MUTED); break }
+                    val r = open.getCompound(i)
+                    val st = MonIcons.item(r.getString("item"))
+                    icon(g, ItemStack(JOB_ICONS[Job.of(r.getString("job")) ?: Job.LUMBER] ?: Items.PAPER), b.rx, y)
+                    text(g, "←", b.rx + 18, y + 4, Pal.MUTED)
+                    icon(g, st, b.rx + 26, y)
+                    clip(g, Component.literal("${r.getInt("count")} ").append(st.hoverName), b.rx + 44, y + 4, b.pw - 72, Pal.INK)
+                    val d = "${r.getInt("dist")}m"
+                    text(g, d, b.rx + b.pw - font.width(d), y + 4, Pal.MUTED)
+                    y += 17
+                }
             }
         }
     }
@@ -785,7 +813,9 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
 
     /** Left page: which chest, its mode and what is on its list. Right page: groups and your inventory to add from. */
     private fun filterPage(g: GuiGraphics, b: Book) {
-        ribbon(g, b, tr("foremon.gui.tab_filter_short"))
+        val crafting = job == Job.CRAFTING
+        ribbon(g, b, tr(if (crafting) "foremon.gui.craft_title" else "foremon.gui.tab_filter_short"))
+        if (crafting) para(g, muted(tr("foremon.gui.craft_how")), b.lx, b.bottom - 30, b.pw, Pal.MUTED, 3)
         val chest = selectedChest() ?: return
         val entries = chest.getList("entries", Tag.TAG_STRING.toInt()).map { it.asString }
         val only = chest.getBoolean("only")

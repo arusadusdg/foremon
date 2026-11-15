@@ -86,7 +86,7 @@ fun send(op: String, fill: (CompoundTag) -> Unit = {}) =
 val JOB_ICONS = mapOf(
     Job.LUMBER to Items.IRON_AXE, Job.MINING to Items.IRON_PICKAXE, Job.SORTING to Items.HOPPER, Job.HAULING to Items.CHEST_MINECART,
     Job.FARMING to Items.IRON_HOE, Job.SMELTING to Items.BLAST_FURNACE, Job.BUILDING to Items.BRICKS, Job.DEMOLITION to Items.TNT,
-    Job.GUARD to Items.IRON_SWORD,
+    Job.GUARD to Items.IRON_SWORD, Job.CRAFTING to Items.CRAFTING_TABLE,
 )
 
 /** Item stacks that render as a Pokemon's 3D model, made by Cobblemon's own item. Cached: screens ask for them every frame. */
@@ -337,6 +337,20 @@ abstract class ForemonScreen(title: Component) : Screen(title) {
 
     protected fun stars(g: GuiGraphics, x: Int, y: Int, n: Int) {
         for (i in 0 until 5) g.drawString(font, "\u2605", x + i * 7, y, if (i < n) Pal.STAR else Pal.STAR_OFF, false)
+    }
+
+    /** Requested items as icons with how many are wanted, in a row up to [w] wide. Returns true if there were any. */
+    protected fun requestIcons(g: GuiGraphics, list: net.minecraft.nbt.ListTag, x: Int, y: Int, w: Int): Boolean {
+        for (i in 0 until list.size) {
+            val ix = x + i * 34
+            if (ix + 32 > x + w) break
+            val r = list.getCompound(i)
+            val st = MonIcons.item(r.getString("item"))
+            icon(g, st, ix, y)
+            text(g, "x${r.getInt("count")}", ix + 17, y + 5, Pal.INK)
+            if (hover(ix, y, 32, 16)) tip = listOf(st.hoverName, Component.translatable("foremon.gui.requested", r.getInt("count")))
+        }
+        return list.size > 0
     }
 
     protected fun lines(vararg c: Component): List<Component> = c.toList()

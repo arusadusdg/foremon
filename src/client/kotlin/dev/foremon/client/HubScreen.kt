@@ -124,6 +124,9 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
             if (hover(mx0, y, 28, 26)) tip = lines(Component.literal(mons.getCompound(m).getString("name")))
         }
         y += 32
+        // What the site is asking haulers for.
+        val reqs = s.getList("requests", Tag.TAG_COMPOUND.toInt())
+        if (reqs.size > 0) { text(g, tr("foremon.gui.asking_for"), b.rx, y, Pal.WARN); requestIcons(g, reqs, b.rx, y + 10, b.pw); y += 30 }
         if (s.contains("planSize")) {
             text(g, tr("foremon.gui.plan_progress", s.getInt("planIndex"), s.getInt("planSize")), b.rx, y, Pal.MUTED); y += 10
             bar(g, b.rx, y, b.pw, 5, s.getInt("planIndex").toDouble() / s.getInt("planSize").coerceAtLeast(1), Pal.GOOD)
@@ -210,17 +213,19 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
         "vein" to listOf(Items.RAW_COPPER, Items.RAW_IRON, Items.RAW_GOLD), "sweep" to listOf(Items.WHEAT, Items.HAY_BLOCK),
         "batch" to listOf(Items.FURNACE, Items.BLAST_FURNACE), "load" to listOf(Items.BUNDLE, Items.CHEST_MINECART),
         "multi" to listOf(Items.BRICKS, Items.SCAFFOLDING), "cleave" to listOf(Items.IRON_SWORD, Items.DIAMOND_SWORD),
+        "craft_batch" to listOf(Items.CRAFTING_TABLE, Items.CRAFTER),
     )
 
     private fun perks(g: GuiGraphics, v: CompoundTag, b: Book) {
         ribbon(g, b, tr("foremon.gui.tab_perks"))
+        val rh = min(20, (b.bottom - b.top) / Job.entries.size)
         for ((i, j) in Job.entries.withIndex()) {
-            val y = b.top + i * 20
-            val hot = hover(b.lx, y, b.pw, 18)
-            row(g, b.lx, y, b.pw, 18, hot, selected = j == perkJob)
-            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), b.lx + 2, y + 1)
-            text(g, tr("foremon.job.${j.key}"), b.lx + 22, y + 5, Pal.INK)
-            click(b.lx, y, b.pw, 18) { perkJob = j }
+            val y = b.top + i * rh
+            val hot = hover(b.lx, y, b.pw, rh - 2)
+            row(g, b.lx, y, b.pw, rh - 2, hot, selected = j == perkJob)
+            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), b.lx + 2, y + (rh - 18) / 2)
+            text(g, tr("foremon.job.${j.key}"), b.lx + 22, y + (rh - 10) / 2, Pal.INK)
+            click(b.lx, y, b.pw, rh - 2) { perkJob = j }
         }
         // Right page: the ladder, top to bottom, with who in your party has reached each step.
         heading(g, tr("foremon.gui.perks_title", tr("foremon.job.${perkJob.key}")), b.rx + b.pw / 2, b.rtop + 2)
@@ -278,13 +283,14 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
         // Right page: your best Pokemon for each job.
         heading(g, tr("foremon.gui.dex_best"), b.rx + b.pw / 2, b.rtop + 2)
         val best = v.getCompound("best")
+        val rh = min(21, (b.bottom - b.rtop - 16) / Job.entries.size)
         for ((idx, j) in Job.entries.withIndex()) {
-            val by = b.rtop + 16 + idx * 21
-            if (by + 19 > b.bottom) break
+            val by = b.rtop + 16 + idx * rh
+            if (by + rh - 2 > b.bottom) break
             val list = best.getList(j.key, Tag.TAG_COMPOUND.toInt())
-            row(g, b.rx, by, b.pw, 19)
-            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), b.rx + 2, by + 1)
-            clip(g, tr("foremon.job.${j.key}"), b.rx + 20, by + 6, 52, Pal.INK)
+            row(g, b.rx, by, b.pw, rh - 2)
+            icon(g, ItemStack(JOB_ICONS[j] ?: Items.PAPER), b.rx + 2, by + (rh - 19) / 2)
+            clip(g, tr("foremon.job.${j.key}"), b.rx + 20, by + (rh - 9) / 2, 52, Pal.INK)
             for (i in 0 until min(3, list.size)) {
                 val m = list.getCompound(i)
                 val mx0 = b.rx + 74 + i * 36
@@ -294,10 +300,10 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
                     tr("foremon.gui.speed", "%.2f".format(m.getDouble("mult"))).withStyle(ChatFormatting.GOLD),
                     tr("foremon.gui.mastery", tr("foremon.mastery.${m.getInt("mastery")}")).withStyle(ChatFormatting.AQUA),
                 )
-                icon(g, MonIcons.of(m), mx0, by + 1)
-                text(g, "★${m.getInt("starsFor")}", mx0 + 17, by + 6, Pal.STAR)
+                icon(g, MonIcons.of(m), mx0, by + (rh - 19) / 2)
+                text(g, "★${m.getInt("starsFor")}", mx0 + 17, by + (rh - 9) / 2, Pal.STAR)
             }
-            if (list.isEmpty()) text(g, "-", b.rx + 74, by + 6, Pal.MUTED)
+            if (list.isEmpty()) text(g, "-", b.rx + 74, by + (rh - 9) / 2, Pal.MUTED)
         }
     }
 

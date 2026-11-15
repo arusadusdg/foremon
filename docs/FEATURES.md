@@ -41,6 +41,8 @@ How to read the boxes:
 - [x] **Smelting**: Pokemon with fire act as the furnace, no fuel
 - [x] **Building**: build a plan block by block from the chest (loading the plan from Litematica is `[~]`, see below)
 - [~] **Demolition**: take a marked area apart and return the blocks
+- [~] **Crafting**: makes the items listed in the filter with crafting recipes until there is a stack of each; asks for missing ingredients
+- [~] **Requests**: builders, guards and crafters ask for what they are short of; Hauling sites with Bring requests fetch it from the owner's chests
 - [~] **Guard**: hunt hostile mobs in the work area (going for villagers and players first), put torches from the chest on spawnable dark spots; Map page with guard areas, keep-out and no-torch boxes, a patrol route, guards posted to areas and a big map; Cleave perk; Vigilance, Sharp Claws and Lookout skills
 
 ## Block filters

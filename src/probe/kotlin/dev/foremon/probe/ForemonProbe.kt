@@ -107,7 +107,7 @@ object ForemonProbe : ClientModInitializer {
         /** The first worker on the crew page. */
         val worker get() = (rx + pw / 2) to (rtop + 14 + 11)
         /** Job [i] on the jobs page. */
-        fun job(i: Int) = (lx + pw / 2) to (top + i * 20 + 9)
+        fun job(i: Int): Pair<Int, Int> { val rh = minOf(20, (bottom - top) / dev.foremon.rules.Job.entries.size); return (lx + pw / 2) to (top + i * rh + rh / 2 - 1) }
         /** Slot [i] of the PC box grid (6 columns, 5 rows). */
         fun pcSlot(i: Int): Pair<Int, Int> {
             val cell = minOf(26, pw / 6)

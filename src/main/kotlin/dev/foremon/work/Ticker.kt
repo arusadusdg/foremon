@@ -68,6 +68,11 @@ class Ctx(
     fun carriedFull() = w.count(w.carried) >= capacity()
     fun can(cap: Capability) = cap in profile.capabilities
     fun status(key: String, arg: String = "") = Ticker.status(level, s, key, arg)
+    /** Asks haulers for [count] of [item], or of any item in [also] (see Courier). */
+    fun request(item: net.minecraft.world.item.Item, count: Int, also: Collection<net.minecraft.world.item.Item> = emptyList()) {
+        val r = s.requests[item]
+        if (r == null) s.requests[item] = dev.foremon.world.Request(count, now, (also + item).toSet()) else { r.count = maxOf(r.count, count); r.at = now }
+    }
 
     fun carry(stack: ItemStack) = merge(w.carried, stack)
 
@@ -142,6 +147,8 @@ object Ticker {
             if (now - s.validatedAt >= 20 && (now + s.pos.asLong()) % 20 == 0L || now - s.validatedAt > 40) {
                 s.validatedAt = now
                 Workers.validate(level, s)
+                // A request nobody has asked again for in a minute is no longer wanted.
+                if (s.requests.isNotEmpty()) s.requests.values.removeIf { now - it.at > 1200 }
                 if (owner != null) Outline.show(level, s, owner)
             }
             if (s.workers.isEmpty()) continue
@@ -391,7 +398,7 @@ object Ticker {
         return m
     }
 
-    private val DONE_STATUSES = setOf("foremon.status.no_trees", "foremon.status.area_done", "foremon.status.build_done", "foremon.status.routes_idle")
+    private val DONE_STATUSES = setOf("foremon.status.no_trees", "foremon.status.area_done", "foremon.status.build_done", "foremon.status.routes_idle", "foremon.status.stocked", "foremon.status.requests_idle")
 
     private inline fun debug(c: Ctx, msg: () -> String) {
         if (Foremon.DEBUG) Foremon.LOG.info("[worker {} at {}] {}", c.p.species.name, c.e.blockPosition().toShortString(), msg())

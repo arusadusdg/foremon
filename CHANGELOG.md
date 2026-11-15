@@ -10,6 +10,16 @@
 - The hub (job sites, skill tree, level perks, Work Dex, guide, server settings) is a journal too. The skill tree
   spreads across both pages; level perks read top to bottom with who in your party has each one.
 
+### Requests and Crafting (new job)
+- Sites now ask for what they are short of: a builder out of a block, guards out of torches, a crafter out of an
+  ingredient. The site shows what it is asking for, and so do your job sites in the hub.
+- A Hauling site with **Bring requests** on (the default) fetches those items from any of your chests in Supply
+  Lines range, before working its routes. Haulers pinned to a route with Dispatch stay on their route.
+- **Crafting**: list what to make in the Filter (torches, planks, sticks, anything with a crafting recipe). The crew
+  crafts it from the chest until there is a stack of each, and asks for what it is short of. Recipes that take one
+  of several items (coal or charcoal) accept any of them. Level perk **Assembly Line** (level 20 and 40): 2, then 3
+  crafts per action. New skill **Handiwork**: +10% Crafting speed per level.
+
 ### Guard (new job)
 - Guards fight off hostile mobs in the work area, the ones going for a villager or a player first, then the ones
   closest to a villager. Neutral mobs that leave you alone, and mobs with a name tag, are left alone.

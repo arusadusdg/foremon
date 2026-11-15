@@ -134,6 +134,15 @@ class Zone(val kind: Int, val id: Int, val x1: Int, val z1: Int, val x2: Int, va
     }
 }
 
+/**
+ * A site asking for [count] more of an item: haulers bring it from the owner's other chests. Any item in [accepts] will
+ * do (a recipe that takes coal also takes charcoal). Asked again while still short.
+ */
+class Request(var count: Int, var at: Long, val accepts: Set<Item>)
+
+/** A hauler's one-off load for a request: [count] of anything in [accepts] from the chest at [from] to the site at [to]. */
+class Fetch(val from: BlockPos, val to: BlockPos, val item: Item, val accepts: Set<Item>, val count: Int)
+
 /** What a worker is heading to do. Saved state stays small on purpose: a step is cheap to re-plan after a restart. */
 class Step(val pos: BlockPos, val kind: Kind, val data: Int = 0) {
     enum class Kind { WORK, CHEST, DELIVER, PICKUP, PATROL }
@@ -178,6 +187,8 @@ class Worker(val pokemonId: UUID) {
     var loadStart = 0L
     /** Guard: the patrol point it walks to next. */
     var patrolIndex = 0
+    /** Hauling: the request load it is on, if any. */
+    var fetch: Fetch? = null
 
     fun count(list: List<ItemStack>) = list.sumOf { it.count }
 }
@@ -248,6 +259,10 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     val crews = HashMap<UUID, Pair<BlockPos, BlockPos>>()
     /** Hauling: items moved so far, for the depot board. */
     var hauled = 0L
+    /** What this site is short of, for haulers to bring. Not saved: jobs ask again while they are still short. */
+    val requests = LinkedHashMap<Item, Request>()
+    /** Hauling: whether this depot's haulers also bring other sites what they ask for. */
+    var fillRequests = true
 
     fun save(reg: HolderLookup.Provider) = CompoundTag().also { t ->
         t.putLong("pos", pos.asLong()); t.putUUID("owner", owner); t.putString("ownerName", ownerName)
@@ -257,6 +272,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         t.putLongArray("routes", routes.flatMap { listOf(it.first.asLong(), it.second.asLong()) })
         if (zones.isNotEmpty()) t.putIntArray("zones2", Zone.pack(zones))
         if (patrol.isNotEmpty()) t.putLongArray("patrol", patrol.map { it.asLong() })
+        if (!fillRequests) t.putBoolean("noRequests", true)
         t.put("filter", filter.save())
         t.putString("ball", ball)
         t.put("chests", ListTag().also { l ->
@@ -295,6 +311,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                 t.getLongArray("routes").let { a -> for (i in 0 until a.size / 2) s.routes.add(BlockPos.of(a[2 * i]) to BlockPos.of(a[2 * i + 1])) }
                 s.zones.addAll(Zone.unpack(t.getIntArray("zones2")))
                 t.getLongArray("patrol").forEach { s.patrol.add(BlockPos.of(it)) }
+                s.fillRequests = !t.getBoolean("noRequests")
                 s.filter.load(t.getCompound("filter"))
                 if (t.contains("ball")) s.ball = t.getString("ball").takeIf { it in BALLS } ?: BALLS[0]
                 for (c in t.getList("chests", Tag.TAG_COMPOUND.toInt())) {
