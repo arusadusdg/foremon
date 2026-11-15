@@ -21,7 +21,7 @@ Open each sub's sidebar once before posting.
 | r/MinecraftMods | Unknown: not profiled by Thread Otter or ThreadFox | none | Read the sidebar and a week of posts before posting. |
 | r/pokemon | Unclear; no link policy; image posts do best | Thread Otter, Sep 2026 | Low priority. A Minecraft mod may count as off-topic. |
 
-None of the summaries mentions an AI ban, but keep the AI line at the end of every post (Reddit has no AI toggle).
+None of the summaries mentions an AI ban.
 Attach `docs/media/build.gif` first (it shows the headline), then `docs/media/timber.gif`.
 
 ## Discord servers
@@ -99,7 +99,6 @@ What that means:
 > roof. They also chop, mine, farm, smelt, sort, haul, demolish, guard (with a patrol route you draw on a map) and
 > craft. Sites ask for what they are short of, and haulers fetch it. 49-upgrade skill tree, journal-style menus.
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon | Bugs: https://github.com/arusadusdg/foremon/issues
-> Made with AI assistance.
 
 ## Reddit: r/Cobblemon
 
@@ -122,7 +121,7 @@ Body:
 >
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon | Source and bugs: https://github.com/arusadusdg/foremon/issues
 >
-> Full disclosure: I built it with an AI coding assistant. It's new, so I'd love bug reports and ideas.
+> It's new, so I'd love bug reports and ideas.
 
 ## Reddit: r/feedthebeast
 

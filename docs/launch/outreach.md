@@ -10,7 +10,7 @@ Links to use (checked 15 Nov 2026):
 - Source and bugs: https://github.com/arusadusdg/foremon (issues: https://github.com/arusadusdg/foremon/issues)
 - Modrinth: https://modrinth.com/mod/foremon, only once Modrinth approves it. Until then the link shows "not found".
 
-Messages have no AI toggle, so keep the one-line AI note at the end of each.
+No AI line in messages: the CurseForge page and the Modrinth and TikTok AI labels already disclose it.
 
 ## To a YouTuber (email)
 
@@ -26,8 +26,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 > 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 > Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 >
-> It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. I'm happy to set up a test world or answer anything. It was
-> built with the help of an AI coding assistant.
+> It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. I'm happy to set up a test world or answer anything.
 >
 > Thanks for reading!
 > <your name>
@@ -38,15 +37,14 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 > Litematica schematics for you, block by block, and types decide the crew (Fighting, Rock, Steel and Psychic
 > build fastest, only a flyer reaches the roof). They also chop, mine, farm, smelt, haul and guard. Clip:
 > https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246, download:
-> https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding
-> assistant. No pressure, thanks for the videos!
+> https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1. No pressure, thanks for the videos!
 
 ## To a TikTok creator (DM, keep it short)
 
 > Hi! Love your Cobblemon addon videos. I made one where your Pokemon build your Litematica schematics for you,
 > and types decide who builds fastest. 13-second clip:
 > https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Free on CurseForge (search Foremon).
-> Made with AI help. Thanks!
+> Thanks!
 
 ## In a creator's suggestions channel (Discord post)
 
@@ -58,7 +56,7 @@ For servers that ask for suggestions (the ones found are in youtubers.md). Read 
 > sort, haul, build, demolish, guard, craft), a 49-upgrade skill tree and journal-style menus.
 > Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon
-> (I'm the author. Made with help from an AI coding assistant.)
+> (I'm the author.)
 
 ## To a modpack maker (for example COBBLEVERSE or Freedom Frontiers)
 
@@ -78,7 +76,7 @@ Subject: Foremon, a Cobblemon worker addon, for <pack name>
 >
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon | GitHub: https://github.com/arusadusdg/foremon
 >
-> It was developed with an AI coding assistant, and it is new, so I'd value your feedback.
+> It is new, so I'd value your feedback.
 >
 > <your name>
 
@@ -95,7 +93,7 @@ Subject: A Cobblemon addon for your addon list: Pokemon that build and farm for 
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon
 > Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 >
-> It's free, Fabric 1.21.1, made with help from an AI coding assistant. Thanks for keeping the list!
+> It's free, Fabric 1.21.1. Thanks for keeping the list!
 > <your name>
 
 ## Personal messages, one per creator
@@ -122,7 +120,7 @@ Machop fells a whole tree in one swing.
 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-Free, Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. I built it with help from an AI coding assistant. If you ever rank
+Free, Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. If you ever rank
 it, I'd like the honest take.
 
 Thanks,
@@ -151,8 +149,6 @@ anything or set up a test world.
 Thanks for the lists,
 [your name]
 
-It was made with help from an AI coding assistant.
-
 ### 3. LBee (Discord DM, or email)
 
 **Subject (if email):** Your Pokemon build your Litematica schematics for you (Cobblemon addon)
@@ -165,8 +161,7 @@ base.
 
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-Heads up, it was made with help from an AI coding assistant. No pressure at all. Thanks for the streams!
+No pressure at all. Thanks for the streams!
 [your name]
 
 ### 4. DrBirdoo (his Discord)
@@ -179,8 +174,7 @@ guards walk a patrol route you draw on a map.
 
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-It was made with help from an AI coding assistant. Happy to set up a test world if that helps.
+Happy to set up a test world if that helps.
 [your name]
 
 ### 5. The Sauropod Squad (their Discord)
@@ -193,8 +187,7 @@ only, so it fits the SMP only if it runs Fabric.
 
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-It was made with help from an AI coding assistant. Thanks for the series!
+Thanks for the series!
 [your name]
 
 ### 6. Hey KC! (the email in his About panel, or a comment)
@@ -212,7 +205,7 @@ they're short of, and your haulers bring it from your other chests.
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-It's Fabric 1.21.1 only, made with help from an AI coding assistant.
+It's Fabric 1.21.1 only.
 
 Thanks,
 [your name]
@@ -224,7 +217,7 @@ called Foremon where your Pokemon build your Litematica schematics for you, bloc
 could be built by your team. Types decide the crew: Fighting, Rock, Steel and Psychic types build fastest, and only
 a flyer can reach the roof. They also farm, smelt and haul for you. It's Fabric 1.21.1. Clip:
 https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246, download:
-https://www.curseforge.com/minecraft/mc-mods/foremon. Made with help from an AI coding assistant. Good luck with
+https://www.curseforge.com/minecraft/mc-mods/foremon. Good luck with
 the shiny alpha!
 
 ### 8. Pocketcraft (the email in the About panel, or on pocketcraft.net)
@@ -242,7 +235,7 @@ berries and apricorns), and Fire types smelt without fuel.
 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4, made with help from an AI coding assistant.
+It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4.
 
 Thanks for all the Cobblemon content,
 [your name]
@@ -252,7 +245,7 @@ Thanks for all the Cobblemon content,
 Loved the 151 Days Cobblemon zoo! I made a free Cobblemon addon, Foremon, where your Pokemon build your Litematica
 schematics for you, block by block (Fighting, Rock, Steel and Psychic types build fastest, only flyers reach the
 roof). The next enclosure could be built by the Pokemon that live in it. Search Foremon on CurseForge if you want to
-try it. (Made with help from an AI coding assistant.)
+try it.
 
 ### 10. Sneelz (his Discord, or the email in his About panel)
 
@@ -264,7 +257,7 @@ fells a whole tree in one swing.
 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. Made with help from an AI coding assistant.
+Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4.
 [your name]
 
 ### 11. RXCALIVER (his Discord)
@@ -277,8 +270,7 @@ the crew (Fighting, Rock, Steel and Psychic build fastest, only a flyer reaches 
 
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-Made with help from an AI coding assistant. Thanks for keeping everyone up to date!
+Thanks for keeping everyone up to date!
 [your name]
 
 ### 12. Dangsterz (a comment on his latest video: he has no email or links)
@@ -286,7 +278,6 @@ Made with help from an AI coding assistant. Thanks for keeping everyone up to da
 The Pokemon Center in this series is great! I made a free Cobblemon addon, Foremon, where your Pokemon build your
 Litematica schematics for you, block by block. A living dex has the perfect crew for it: Fighting, Rock, Steel and
 Psychic types build fastest, and only flyers reach the roof. Search Foremon on CurseForge if you want to try it.
-(Made with help from an AI coding assistant.)
 
 ### 13. Blasting Mofos (Discord DM, or Twitch)
 
@@ -298,7 +289,7 @@ moves, so 1025 Pokemon means a lot of crew to choose from.
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-Fabric 1.21.1, made with help from an AI coding assistant. Good luck on the road!
+Fabric 1.21.1. Good luck on the road!
 [your name]
 
 ### 14. Mightee Duck (X DM, or his Discord)
@@ -307,8 +298,7 @@ Hey! I liked the auto XP candy machine in your Origins world. I made a free Cobb
 your Pokemon do the base work: they build your Litematica schematics block by block, chop, mine, farm, smelt and
 haul. Types decide the crew (Fighting, Rock, Steel and Psychic build fastest, only a flyer reaches the roof), so a
 living dex finally has a job for every box. Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246,
-download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding
-assistant. Cheers!
+download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1. Cheers!
 
 ### 15. ItsArenZ (his Discord, or a TikTok DM to @itsarenzminecraft; he has no email)
 
@@ -319,7 +309,7 @@ a whole tree in one swing. Types decide who's good at what, so picking the crew 
 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-Fabric 1.21.1. Made with help from an AI coding assistant. Thanks for the rankings!
+Fabric 1.21.1. Thanks for the rankings!
 [your name]
 
 ### 16. Seismic (email, or X)
@@ -338,8 +328,7 @@ configurable, and 20 workers cost under 1 ms per tick in testing.
 
 Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
-
-It's built with help from an AI coding assistant. Thanks for reading!
+Thanks for reading!
 [your name]
 
 ### 17. Arpus (the email in his About panel, or his Discord)
@@ -357,7 +346,7 @@ guard and craft, and unlock perks as they level.
 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 
-It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4, made with help from an AI coding assistant. Happy to set up a
+It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. Happy to set up a
 test world.
 
 Thanks,
@@ -367,15 +356,13 @@ Thanks,
 
 Hi! Loved "Furnace vs Fire Types". In my free addon Foremon, Fire types really do the smelting, no fuel needed. Your
 Pokemon also build your Litematica schematics block by block (Fighting, Rock, Steel and Psychic build fastest, only a
-flyer reaches the roof). Works on Cobblemon 1.8. 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Free on CurseForge: search Foremon. Made with
-AI help. Thanks!
+flyer reaches the roof). Works on Cobblemon 1.8. 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Free on CurseForge: search Foremon. Thanks!
 
 ### 19. AureusMC (TikTok DM; open the profile first and skip it if nothing is newer than July)
 
 Hi! One for a future part of "Addons that make Cobblemon better": Foremon, a free addon where your Pokemon build your
 Litematica schematics for you, block by block, and types decide the crew. A level 50 Machop fells a whole tree in one
-swing. 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Free on CurseForge (search Foremon), Fabric 1.21.1, Cobblemon 1.7.3 and 1.8. Made with
-AI help. Thanks!
+swing. 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Free on CurseForge (search Foremon), Fabric 1.21.1, Cobblemon 1.7.3 and 1.8. Thanks!
 
 ### Spares (check they've posted lately before sending)
 
@@ -383,18 +370,18 @@ AI help. Thanks!
 
 Hi Danesto! Your cozy Cobblemon videos gave me an idea: in Foremon, a free Cobblemon addon, your Pokemon tend the farm
 (crops, berries and apricorns) and build your cottage from a Litematica plan while you relax. Types decide who's good
-at what. Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding assistant. Thanks!
+at what. Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1. Thanks!
 
 #### OatTheGoat (the email on his About page)
 
 Hi! Your Cobblemon builds are great, so here's a tool for the next one: Foremon, a free addon where your Pokemon build
 your Litematica schematics for you, block by block. Fighting, Rock, Steel and Psychic types build fastest, and only a
-flyer reaches the roof. Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding assistant.
+flyer reaches the roof. Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1.
 [your name]
 
 #### Emeraldking678 (his Discord)
 
 Hey! You used to show Cobblemon addons, so here's a new one if you're still making them: Foremon, where your Pokemon
 build your Litematica schematics block by block, chop, mine, farm, smelt, haul and guard. Types decide the crew.
-Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding assistant.
+Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Download: https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1.
 [your name]

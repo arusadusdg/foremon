@@ -35,10 +35,9 @@ password or a verification only you can do.
 
 - Lead with: **your Pokemon build your Litematica schematics for you, and types decide the crew.**
 - It is **new**: ask people to report bugs on GitHub issues (https://github.com/arusadusdg/foremon/issues).
-- It was **developed with an AI coding assistant**. Disclose it on every page and post. Where the site has an AI
-  toggle (Modrinth's "Contains AI-generated content", TikTok's "AI-generated content" switch in the upload form),
-  use the toggle and leave it out of the text. Where there is none (CurseForge, GitHub, Reddit, Discord, emails and
-  DMs), say it in the text, at the end.
+- It was **developed with an AI coding assistant**. The mod pages disclose it: the CurseForge page in a line at the
+  bottom, and the AI toggles on Modrinth ("Contains AI-generated content") and TikTok ("AI-generated content", in
+  the upload form). Messages, emails and posts to people leave it out (your call, 16 Nov).
 - Stamina and food can be switched off in the settings, for players who dislike upkeep.
 - Requirements: Minecraft 1.21.1, Fabric, Fabric API, Fabric Language Kotlin, Cobblemon 1.7.3 or newer (tested on 1.7.3 and
   1.8.4). Litematica is optional.
