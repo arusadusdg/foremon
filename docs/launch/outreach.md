@@ -6,7 +6,7 @@ creators (roughly 1,000 to 50,000 subscribers; they reply more often), use the c
 
 Links to use (checked 15 Nov 2026):
 - Download: https://www.curseforge.com/minecraft/mc-mods/foremon (1.2.1 is live)
-- Clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
+- Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 - Source and bugs: https://github.com/arusadusdg/foremon (issues: https://github.com/arusadusdg/foremon/issues)
 - Modrinth: https://modrinth.com/mod/foremon, only once Modrinth approves it. Until then the link shows "not found".
 
@@ -23,7 +23,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 > Fighting, Rock, Steel and Psychic types build fastest, and only a Pokemon that can fly can reach the roof.
 > They also chop whole trees, dig out mines, farm, smelt, haul between chests, guard your village and craft.
 >
-> 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
+> 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 > Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 >
 > It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. I'm happy to set up a test world or answer anything. It was
@@ -37,7 +37,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 > Hey <name>! I liked <specific video>. I made a free Cobblemon addon called Foremon: your Pokemon build your
 > Litematica schematics for you, block by block, and types decide the crew (Fighting, Rock, Steel and Psychic
 > build fastest, only a flyer reaches the roof). They also chop, mine, farm, smelt, haul and guard. Clip:
-> https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286, download:
+> https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246, download:
 > https://www.curseforge.com/minecraft/mc-mods/foremon. Fabric 1.21.1, made with help from an AI coding
 > assistant. No pressure, thanks for the videos!
 
@@ -45,7 +45,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 
 > Hi! Love your Cobblemon addon videos. I made one where your Pokemon build your Litematica schematics for you,
 > and types decide who builds fastest. 13-second clip:
-> https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286. Free on CurseForge (search Foremon).
+> https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246. Free on CurseForge (search Foremon).
 > Made with AI help. Thanks!
 
 ## In a creator's suggestions channel (Discord post)
@@ -56,7 +56,7 @@ For servers that ask for suggestions (the ones found are in youtubers.md). Read 
 > Your Pokemon build your Litematica schematics for you, block by block, and types decide the crew: Fighting,
 > Rock, Steel and Psychic types build fastest, flyers do the roof. Ten jobs in all (chop, mine, farm, smelt,
 > sort, haul, build, demolish, guard, craft), a 49-upgrade skill tree and journal-style menus.
-> Clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
+> Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon
 > (I'm the author. Made with help from an AI coding assistant.)
 
@@ -93,7 +93,7 @@ Subject: A Cobblemon addon for your addon list: Pokemon that build and farm for 
 > guard and craft. Types decide the crew, so it fits a "best automation" or "best addons" section.
 >
 > CurseForge: https://www.curseforge.com/minecraft/mc-mods/foremon
-> Clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
+> Clip: https://www.tiktok.com/@foremoncobblemon/video/7708516795052756246
 >
 > It's free, Fabric 1.21.1, made with help from an AI coding assistant. Thanks for keeping the list!
 > <your name>
