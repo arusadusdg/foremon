@@ -47,17 +47,19 @@ matters. A Machop chops, a Geodude digs, a Charmander smelts, a Pidgey hauls. Ho
 
 ![A crew of three builds a village house from Litematica](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/build.gif)
 
-![Crew page with a Pokemon's job rating](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_crew.png)
+![Crew page: the worker on the right, your party below](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_crew.png?v=2)
 
-![Jobs page](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_jobs.png)
+![Jobs page: what each job does and who in your party suits it](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_jobs.png?v=2)
 
-![Guard map with a guard area and a patrol route](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_map.png)
+![PC page: hover a Pokemon to see why it is rated the way it is](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_pc.png?v=2)
 
-![PC box](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_pc.png)
+![Guard map with a guard area and a patrol route](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_map.png?v=2)
 
-![Skill tree](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_skills.png)
+![Skill tree](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_skills.png?v=2)
 
-![Level perks](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_perks.png)
+![Level perks for each job](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_perks.png?v=2)
+
+![Work Dex: your best Pokemon for every job](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_dex.png?v=2)
 
 ![Getting started](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/getting_started.png)
 

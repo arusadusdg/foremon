@@ -158,7 +158,7 @@ class HubScreen : ForemonScreen(tr("foremon.gui.hub")) {
         for ((i, br) in branches.withIndex()) button(g, (if (i < 2) b.lx else b.rx) + (i % 2) * (bw + 3), b.top, bw, 15, tr("foremon.branch.$br"), accent = branch == br) { branch = br }
         val mode = tr("foremon.gui.mode", tr("foremon.mode.${v.getString("mode")}"))
         text(g, mode, b.rx + b.pw - font.width(mode), b.rtop + 2, Pal.MUTED)
-        text(g, tr("foremon.gui.skill_how"), b.rx, b.rtop + 2, Pal.MUTED)
+        clip(g, tr("foremon.gui.skill_how"), b.rx, b.rtop + 2, b.pw - font.width(mode) - 6, Pal.MUTED)
 
         val ax = b.lx; val aw = b.rx + b.pw - b.lx
         val ay = b.top + 20; val ah = b.bottom - ay

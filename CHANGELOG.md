@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- On big screens (1920x1080 with auto GUI scale) the skill tree's "Click to buy" ran into "Mode", and long page
+  titles (Perks, Work Dex) ran off the page. Both fit now.
+
 ## 1.2.0
 
 ### A new look

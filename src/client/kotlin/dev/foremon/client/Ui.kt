@@ -240,8 +240,11 @@ abstract class ForemonScreen(title: Component) : Screen(title) {
         val s = c.copy().withStyle(ChatFormatting.BOLD)
         val max = layout().pw
         if (font.width(s) <= max) { g.drawString(font, s, cx - font.width(s) / 2, y, color, false); return }
-        val cut = Component.literal(font.plainSubstrByWidth(c.string, max - 14) + "...").withStyle(ChatFormatting.BOLD)
-        g.drawString(font, cut, cx - font.width(cut) / 2, y, color, false)
+        // Measured in bold: bold letters are a pixel wider, so a cut measured in plain text still ran off the page.
+        var t = c.string
+        fun cut() = Component.literal("$t...").withStyle(ChatFormatting.BOLD)
+        while (t.isNotEmpty() && font.width(cut()) > max) t = t.dropLast(1)
+        g.drawString(font, cut(), cx - font.width(cut()) / 2, y, color, false)
     }
 
     /** A boxed line of a list: a light card with a brown edge. */

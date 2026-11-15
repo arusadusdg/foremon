@@ -30,6 +30,7 @@ import net.minecraft.world.level.levelgen.WorldOptions
 import net.minecraft.world.level.levelgen.presets.WorldPresets
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
+import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
 import kotlin.math.min
 
@@ -69,6 +70,7 @@ object ForemonProbe : ClientModInitializer {
         // The test must keep running when its window is not in front; a paused game would look like a stuck worker.
         ClientTickEvents.START_CLIENT_TICK.register { mc -> if (mc.options.pauseOnLostFocus) mc.options.pauseOnLostFocus = false }
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
+            mc.toasts.clear() // Cobblemon's tips ("Check out the starters!") would sit on every screenshot.
             try { tick(mc) } catch (e: Throwable) { log.error("PROBE FAIL in step ${steps.getOrNull(index)?.name}", e); mc.stop() }
         }
     }
@@ -391,6 +393,12 @@ object ForemonProbe : ClientModInitializer {
 
     /** The menu controls nobody had seen working: Start and Pause, hover tooltips, sending a worker home, and a server setting. */
     private fun uiScript() {
+        // Big window: the screenshots double as the mod page photos (GUI scale 4, so every pixel is sharp).
+        step("big window", 20, { it.screen is TitleScreen }) { mc ->
+            GLFW.glfwSetWindowSize(mc.window.window, 1920, 1080)
+            // Ignore the real mouse: someone moving it over the window would put stray tooltips on the photos.
+            GLFW.glfwSetCursorPosCallback(mc.window.window, null)
+        }
         step("create world", 60, { it.screen is TitleScreen }) { mc ->
             mc.createWorldOpenFlows().createFreshLevel(
                 "Foremon Test",
@@ -406,6 +414,7 @@ object ForemonProbe : ClientModInitializer {
             for (c in listOf(
                 "gamerule doDaylightCycle false", "time set noon", "weather clear", "gamerule doMobSpawning false",
                 "give @s foremon:whistle", "pokegive machop level=30", "pokegive bulbasaur level=10",
+                "pokegive charmander level=24", "pokegive geodude level=20", "pokegive pidgeotto level=22",
                 "setblock ${chest.x} ${chest.y} ${chest.z} minecraft:chest",
                 "place feature minecraft:oak ${origin.x + 7} ${origin.y} ${origin.z - 4}",
             )) cmd(mc, c)
@@ -431,6 +440,7 @@ object ForemonProbe : ClientModInitializer {
         step("check sent home", 30) { mc -> siteState(mc, "after sending home"); shot(mc, "52_after_send_home") }
         // ---- every page of the new book, for a look
         step("assign machop again", 10) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
+        step("pointer off the page", 10) { mc -> pointAt(mc, 0 to 0) }
         step("shot: crew page", 30) { mc -> shot(mc, "60_crew") }
         step("jobs page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).jobsTab) }
         step("hover guard", 5) { mc -> val s = mc.screen as SiteScreen; pointAt(mc, Layout(s.width, s.height).job(8)) }
@@ -438,6 +448,7 @@ object ForemonProbe : ClientModInitializer {
         step("PC page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).pcTab) }
         step("hover the first PC slot", 30) { mc -> val s = mc.screen as SiteScreen; pointAt(mc, Layout(s.width, s.height).pcSlot(0)) }
         step("shot: PC page", 15) { mc -> shot(mc, "62_pc") }
+        step("pointer off the page again", 5) { mc -> pointAt(mc, 0 to 0) }
         step("filter page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).filterTab) }
         step("shot: filter page", 15) { mc -> shot(mc, "63_filter") }
         step("chests page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).chestsTab) }
