@@ -99,8 +99,3 @@ The default data files and the language file are generated: edit `tools/gen_rule
 
 MIT. Contains no Cobblemon assets.
 
----
-
-*Foremon was designed by its author and written with the help of an AI coding
-assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's
-direction. Every feature listed here is checked by automated tests in a real Minecraft server.*
