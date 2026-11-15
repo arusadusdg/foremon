@@ -1,7 +1,7 @@
 # Launch kit
 
 Everything needed to publish Foremon and tell people about it. Each file has text ready to paste.
-Current version: **1.2.0** (15 Nov 2026).
+Current version: **1.2.1** (15 Nov 2026).
 
 Signing up, signing in, posting and sending messages are yours to do: they go out under your name, and some need a
 password or a verification only you can do.
@@ -11,9 +11,9 @@ password or a verification only you can do.
 | # | What | File | Status on 15 Nov 2026 |
 |---|---|---|---|
 | 1 | An email address just for the mod | [email.md](email.md) | Optional. The contact on every page and message is GitHub issues |
-| 2 | GitHub repository: code and bug reports | [github.md](github.md) | Done. Release v1.2.0 is up |
+| 2 | GitHub repository: code and bug reports | [github.md](github.md) | Done. Release v1.2.1 is up |
 | 3 | Modrinth page | [modrinth.md](modrinth.md) | Still under review. The page shows "not found" to others until approved |
-| 4 | CurseForge page | [curseforge.md](curseforge.md) | Done. 1.2.0 is live |
+| 4 | CurseForge page | [curseforge.md](curseforge.md) | Done. 1.2.1 is live |
 | 5 | Your own Discord server | [discord-server.md](discord-server.md) | Not made yet |
 | 6 | Post in the official Cobblemon Discord | [posts.md](posts.md) | Yours to post |
 | 7 | Post on r/Cobblemon, r/feedthebeast, r/fabricmc | [posts.md](posts.md) | Yours to post (Reddit is blocked from the tools here) |
@@ -24,7 +24,7 @@ password or a verification only you can do.
 
 ## Files for the pages
 
-- Mod jar: `build/libs/foremon-1.2.0.jar`
+- Mod jar: `build/libs/foremon-1.2.1.jar`
 - Icon: `src/main/resources/assets/foremon/icon.png` (128x128) and `docs/media/icon-512.png`
 - GIFs: `docs/media/build.gif` (a Litematica house, use this first) and `docs/media/timber.gif` (a whole tree in one swing)
 - TikTok video: `docs/media/foremon-tiktok.mp4` (vertical, 1080x1920)

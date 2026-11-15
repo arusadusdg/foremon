@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.2.1
 
+- Works on Cobblemon 1.8 too: tested on Cobblemon 1.8.4 (every in-game test and every menu), as well as 1.7.3.
 - On big screens (1920x1080 with auto GUI scale) the skill tree's "Click to buy" ran into "Mode", and long page
   titles (Perks, Work Dex) ran off the page. Both fit now.
 

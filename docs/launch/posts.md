@@ -2,7 +2,7 @@
 
 Read each community's rules before posting; many allow self-promotion only in a set channel or on set days.
 Lead with the same line everywhere: **your Pokemon build your Litematica schematics for you, and types decide
-the crew.** Link CurseForge (live with 1.2.0). Add Modrinth only after it is approved.
+the crew.** Link CurseForge (live with 1.2.1). Add Modrinth only after it is approved.
 
 ## Rules check (15 Nov 2026)
 

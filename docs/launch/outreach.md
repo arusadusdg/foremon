@@ -5,7 +5,7 @@ creators (roughly 1,000 to 50,000 subscribers; they reply more often), use the c
 [youtubers.md](youtubers.md), and personalise the first line with one of their videos.
 
 Links to use (checked 15 Nov 2026):
-- Download: https://www.curseforge.com/minecraft/mc-mods/foremon (1.2.0 is live)
+- Download: https://www.curseforge.com/minecraft/mc-mods/foremon (1.2.1 is live)
 - Clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
 - Source and bugs: https://github.com/arusadusdg/foremon (issues: https://github.com/arusadusdg/foremon/issues)
 - Modrinth: https://modrinth.com/mod/foremon, only once Modrinth approves it. Until then the link shows "not found".
