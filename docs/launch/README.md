@@ -40,5 +40,5 @@ password or a verification only you can do.
   use the toggle and leave it out of the text. Where there is none (CurseForge, GitHub, Reddit, Discord, emails and
   DMs), say it in the text, at the end.
 - Stamina and food can be switched off in the settings, for players who dislike upkeep.
-- Requirements: Minecraft 1.21.1, Fabric, Fabric API, Fabric Language Kotlin, Cobblemon 1.7.3 or newer (1.8 not
-  tested yet). Litematica is optional.
+- Requirements: Minecraft 1.21.1, Fabric, Fabric API, Fabric Language Kotlin, Cobblemon 1.7.3 or newer (tested on 1.7.3 and
+  1.8.4). Litematica is optional.

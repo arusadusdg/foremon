@@ -93,7 +93,7 @@ What that means:
 
 ## Official Cobblemon Discord (addon or showcase channel)
 
-> **Foremon: your Pokemon build your Litematica schematics** (Fabric 1.21.1, Cobblemon 1.7.3+)
+> **Foremon: your Pokemon build your Litematica schematics** (Fabric 1.21.1, Cobblemon 1.7.3 and 1.8)
 > Turn a chest into a job site and your Pokemon do the work in the world. Load a Litematica schematic and the crew
 > builds it block by block; types decide who builds fastest (Fighting, Rock, Steel, Psychic), and flyers do the
 > roof. They also chop, mine, farm, smelt, sort, haul, demolish, guard (with a patrol route you draw on a map) and
@@ -107,7 +107,7 @@ Title:
 > I made an addon where your Pokemon build your Litematica schematics for you, and types decide the crew
 
 Body:
-> Foremon is a free Fabric addon for Cobblemon (1.21.1, Cobblemon 1.7.3+). You turn any chest into a job site,
+> Foremon is a free Fabric addon for Cobblemon (1.21.1, Cobblemon 1.7.3 and 1.8). You turn any chest into a job site,
 > assign Pokemon, and they really do the work in the world. The headline job: place a Litematica schematic, fill
 > the chest with blocks, and your crew builds it from the bottom up. Fighting, Rock, Steel and Psychic types build
 > fastest, and only a Pokemon that can fly reaches the roof.

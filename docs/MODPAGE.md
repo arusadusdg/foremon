@@ -79,7 +79,7 @@ Right-click the air with the whistle for your job sites, the skill tree, the lev
 
 Minecraft 1.21.1 with Fabric Loader, and:
 
-- [Cobblemon](https://www.curseforge.com/minecraft/mc-mods/cobblemon) 1.7.3 or newer
+- [Cobblemon](https://www.curseforge.com/minecraft/mc-mods/cobblemon) 1.7.3 or newer (tested on 1.7.3 and 1.8.4)
 - [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api)
 - [Fabric Language Kotlin](https://www.curseforge.com/minecraft/mc-mods/fabric-language-kotlin)
 - Optional: [Litematica](https://www.curseforge.com/minecraft/mc-mods/litematica) (only for building from schematics)

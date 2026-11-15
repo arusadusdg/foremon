@@ -50,7 +50,19 @@ dependencies {
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
-	modImplementation "com.cobblemon:fabric:${project.cobblemon_version}"
+	// -Pcobblemon_runtime_version=1.8.4+1.21.1 builds against cobblemon_version (like the released jar) but runs the
+	// game and gametests on another Cobblemon, to catch calls that compile but break at runtime.
+	def runCobblemon = findProperty("cobblemon_runtime_version")
+	if (runCobblemon) {
+		modCompileOnly "com.cobblemon:fabric:${project.cobblemon_version}"
+		modRuntimeOnly "com.cobblemon:fabric:${runCobblemon}"
+	} else {
+		modImplementation "com.cobblemon:fabric:${project.cobblemon_version}"
+	}
+	// Cobblemon 1.8's battle engine needs icu4j 71.1; dev runs would pick Minecraft's 73.2 and hang at startup.
+	if (!(runCobblemon ?: project.cobblemon_version).startsWith("1.7")) {
+		configurations.matching { it.name.endsWith("untimeClasspath") }.configureEach { resolutionStrategy.force "com.ibm.icu:icu4j:71.1" }
+	}
 
 	// Only in the development game, to test building from Litematica. Not a dependency of the mod.
 	modLocalRuntime "maven.modrinth:litematica:0.19.58"

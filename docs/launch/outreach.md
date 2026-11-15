@@ -26,7 +26,7 @@ Subject: Free Cobblemon addon for a video: Pokemon that build your schematics
 > 13-second clip: https://www.tiktok.com/@foremoncobblemon/video/7707809016776363286
 > Download: https://www.curseforge.com/minecraft/mc-mods/foremon
 >
-> It's Fabric 1.21.1, tested with Cobblemon 1.7.3. I'm happy to set up a test world or answer anything. It was
+> It's Fabric 1.21.1, works on Cobblemon 1.7.3 and 1.8.4. I'm happy to set up a test world or answer anything. It was
 > built with the help of an AI coding assistant.
 >
 > Thanks for reading!
