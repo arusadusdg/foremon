@@ -50,3 +50,5 @@ video/out/
 video/public/footage/
 video/public/img/
 video/public/sfx/
+video/.env
+video/public/vo/

@@ -5,7 +5,9 @@ import { clamp, theme } from "../theme";
 import { Card, Chip, Column, Counter, Entrance, Footage, KenBurns, Label, SceneExit, WordReveal } from "../components/Motion";
 import footage from "../footage.json";
 
-export type SceneProps = { dur: number };
+export type Word = { w: string; start: number; end: number };
+/** [dur]: scene length in frames. [words]: the voice-over's words (seconds from [lead], the frame the voice starts). */
+export type SceneProps = { dur: number; words?: Word[]; lead?: number };
 
 const useSec = () => {
   const { fps } = useVideoConfig();
@@ -13,7 +15,7 @@ const useSec = () => {
 };
 
 /** A sound effect starting at frame [at] of the scene (place it 2-3 frames before the visual lands). */
-const Sfx: React.FC<{ at: number; name: "whoosh" | "pop" | "tick" | "hit"; volume?: number }> = ({ at, name, volume = 0.7 }) => {
+const Sfx: React.FC<{ at: number; name: "whoosh" | "pop" | "tick" | "hit" | "riser"; volume?: number }> = ({ at, name, volume = 0.7 }) => {
   const { fps } = useVideoConfig();
   return (
     <Sequence from={Math.max(0, at)} durationInFrames={fps}>
@@ -32,6 +34,67 @@ const CardCaption: React.FC<{ text: string; delay: number }> = ({ text, delay })
   </div>
 );
 
+/** A word that slams in from big to normal size on a bouncy spring, at frame [at]. */
+const Slam: React.FC<{ text: string; at: number; size: number; color: string; glow?: boolean }> = ({ text, at, size, color, glow }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = spring({ frame: frame - at, fps, config: theme.spring.bouncy });
+  return (
+    <span style={{ display: "inline-block", fontFamily: theme.fonts.display, fontWeight: 800, fontSize: size, lineHeight: 1, color,
+      letterSpacing: "-0.03em", opacity: interpolate(frame - at, [0, 2], [0, 1], clamp),
+      transform: `scale(${interpolate(p, [0, 1], [2.4, 1], clamp)}) rotate(${interpolate(p, [0, 1], [-8, 0], clamp)}deg)`,
+      textShadow: glow ? `0 0 60px ${theme.colors.glow}, 0 8px 0 rgba(0,0,0,0.5)` : "0 8px 0 rgba(0,0,0,0.5), 0 0 40px rgba(0,0,0,0.6)" }}>{text}</span>
+  );
+};
+
+/**
+ * The shouted opener: "HEY, LISTEN! Team Rocket doesn't want you to know this..." Each word lands on the frame the
+ * voice says it. Two white flash hits (HEY, TEAM), far under three flashes a second, plus screen shake on every slam.
+ */
+export const Hook: React.FC<SceneProps> = ({ dur, words = [], lead = 0 }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const s = useSec();
+  // When each word is said, with timings that still work if there is no voice-over yet.
+  const at = (i: number, fallback: number) => lead + Math.round((words[i]?.start ?? fallback) * fps);
+  const hey = at(0, 0.1), listen = at(1, 0.4), team = at(2, 1.3), rocket = at(3, 1.6);
+  const rest = ["doesn't", "want", "you", "to", "know", "this..."].map((w, i) => ({ w, f: at(4 + i, 2.0 + i * 0.3) }));
+  const flash = Math.max(...[hey, team].map((t) => (frame < t ? 0 : interpolate(frame, [t, t + 8], [0.85, 0], { ...clamp, easing: theme.ease.out }))));
+  const shake = [hey, listen, team, rocket].reduce((sum, t) => sum + (frame >= t ? Math.exp(-(frame - t) / 4) : 0), 0);
+  const sx = Math.sin(frame * 2.7) * 24 * shake, sy = Math.cos(frame * 3.1) * 18 * shake;
+  // "HEY, LISTEN!" makes room when "TEAM ROCKET" lands.
+  const up = spring({ frame: frame - team + 6, fps, config: theme.spring.snappy });
+  const pulse = 0.35 + 0.25 * Math.max(0, Math.sin(frame / 3));
+  return (
+    <SceneExit dur={dur}>
+      <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 45%, ${theme.colors.accent}, transparent 70%)`, opacity: pulse }} />
+      <AbsoluteFill style={{ transform: `translate(${sx}px, ${sy}px)` }}>
+        {/* HEY, / LISTEN! stacked big in the middle, then shrinking up out of the way of TEAM ROCKET. */}
+        <div style={{ position: "absolute", left: "50%", top: interpolate(up, [0, 1], [900, 640], clamp), display: "flex", flexDirection: "column",
+          alignItems: "center", transform: `translate(-50%, -50%) scale(${interpolate(up, [0, 1], [1, 0.55], clamp)})` }}>
+          <Slam text="HEY," at={hey} size={220} color={theme.colors.chip} />
+          <Slam text="LISTEN!" at={listen} size={220} color={theme.colors.chip} />
+        </div>
+        <div style={{ position: "absolute", left: "50%", top: 900, display: "flex", gap: 30, transform: "translate(-50%, -50%)", whiteSpace: "nowrap" }}>
+          <Slam text="TEAM" at={team} size={130} color={theme.colors.primary} glow />
+          <Slam text="ROCKET" at={rocket} size={130} color={theme.colors.primary} glow />
+        </div>
+        <div style={{ position: "absolute", top: 1010, left: 90, right: 90, display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: 22 }}>
+          {rest.map(({ w, f }) => {
+            const p = spring({ frame: frame - f, fps, config: theme.spring.snappy });
+            return <span key={w} style={{ display: "inline-block", fontFamily: theme.fonts.display, fontWeight: 800, fontSize: 84, color: theme.colors.text,
+              opacity: p, transform: `translateY(${interpolate(p, [0, 1], [30, 0], clamp)}px)`, textShadow: "0 6px 30px rgba(0,0,0,0.6)" }}>{w}</span>;
+          })}
+        </div>
+      </AbsoluteFill>
+      <AbsoluteFill style={{ background: "#FFFFFF", opacity: flash, pointerEvents: "none" }} />
+      <Sfx at={hey - 1} name="hit" volume={0.45} />
+      <Sfx at={team - 1} name="hit" volume={0.45} />
+      <Sfx at={dur - s(1.6)} name="riser" volume={0.5} />
+    </SceneExit>
+  );
+};
+
 export const House: React.FC<SceneProps> = ({ dur }) => {
   const s = useSec();
   return (
@@ -42,7 +105,7 @@ export const House: React.FC<SceneProps> = ({ dur }) => {
       </Card>
       <Column top={theme.layout.safeTop} gap={20}>
         <Label text="COBBLEMON ADDON" delay={2} />
-        <WordReveal text="My Pokémon | build my house" hero={2} delay={s(0.15)} size={110} />
+        <WordReveal text="Your Pokémon | build your house" hero={2} delay={s(0.15)} size={110} />
       </Column>
       <Sfx at={0} name="hit" volume={0.55} />
       <Sfx at={s(2.4) - 2} name="pop" volume={0.5} />

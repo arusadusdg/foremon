@@ -1,0 +1,12 @@
+[
+  { "scene": "Hook", "text": "[shouting] HEY, LISTEN! Team Rocket doesn't want you to know this...",
+    "fallback": "HEY, LISTEN!! TEAM ROCKET DOESN'T WANT YOU TO KNOW THIS!", "model": "eleven_v3",
+    "settings": { "stability": 0.0, "similarity_boost": 0.8, "style": 0.8, "use_speaker_boost": true } },
+  { "scene": "House", "text": "Your Pokémon can build your whole house. Block by block, from a Litematica plan." },
+  { "scene": "Crew", "text": "Types pick the crew. Fighters build fastest, flyers do the roof." },
+  { "scene": "Timber", "text": "At level fifty, Machop fells a whole tree in one swing." },
+  { "scene": "Jobs", "text": "Ten jobs: lumber, mining, farming, building, guarding, crafting and more." },
+  { "scene": "Guard", "text": "Draw a patrol, and your guards keep it safe." },
+  { "scene": "Skills", "text": "Unlock forty-nine upgrades as your crew grows." },
+  { "scene": "Cta", "text": "Foremon. It's free on CurseForge." }
+]

@@ -8,6 +8,10 @@ Source for Foremon's vertical promo videos, made with [Remotion](https://remotio
    `FOREMON_PROBE=ui` and `docs/media/cf/shot_*.png`.
 2. `python video/scripts/prep.py` copies footage and stills into `public/` and writes `src/footage.json`.
 3. `node video/scripts/gen-audio.mjs` synthesizes the music bed and sound effects into `public/sfx/`.
-4. In `video/`: `npm install`, then `npm run studio` to preview or `npm run render` for `out/foremon-tiktok-2.mp4`.
+4. Voice-over (optional): put an ElevenLabs key in `video/.env` (see `.env.example`), edit the lines in
+   `src/vo-script.json`, then `node video/scripts/gen-voice.mjs`. Scenes stretch to fit their line on the beat grid.
+   Free keys only get the built-in voices (default Callum); `node video/scripts/check-voice.mjs <voiceId>` tests one.
+   Free-plan audio is non-commercial and must credit elevenlabs.io.
+5. In `video/`: `npm install`, then `npm run studio` to preview or `npm run render` for `out/foremon-tiktok-2.mp4`.
 
 Generated folders (`public/footage`, `public/img`, `public/sfx`, `out`, `node_modules`) are not in git.
