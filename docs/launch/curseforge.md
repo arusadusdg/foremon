@@ -6,7 +6,7 @@ projects before they appear.
 | Field | Value |
 |---|---|
 | Name | Foremon |
-| Summary | Put your Cobblemon to work: Pokemon chop, mine, farm, smelt, sort and build your Litematica schematics. Developed with AI assistance. |
+| Summary | Put your Cobblemon to work: Pokemon chop, mine, farm, smelt, haul, craft, guard and build your Litematica schematics. |
 | Main category | Addons (Cobblemon has no addon category, so pick the closest: Map and Information is wrong; use "Utility & QoL" plus "Addons") |
 | Other categories | Utility & QoL, Mobs |
 | License | MIT |
@@ -17,8 +17,7 @@ projects before they appear.
 
 ## Description
 
-Paste [../MODPAGE.md](../MODPAGE.md). Keep the AI disclosure box at the top; CurseForge asks authors to be
-upfront about AI-generated content. Add `docs/media/timber.gif` first and the screenshots below it.
+Paste [../MODPAGE.md](../MODPAGE.md). The AI note stays at the very bottom (the user asked for that). Banners: python tools/gen_banners.py <ascii.png>.
 
 ## File
 

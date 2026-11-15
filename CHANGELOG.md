@@ -35,7 +35,7 @@
 - New skills: **Vigilance** (+10% Guard speed), **Sharp Claws** (guards hit 25% harder), **Lookout** (guards hunt 8
   blocks further), **Green Thumb** (harvests may grow nearby crops), **Quick Fetch** (builders carry 50% more per
   trip), **Express Lanes** (hauling loads 15% quicker) and **Campfire Rest** (naps 40% shorter with a campfire or a
-  bed near the chest). 48 upgrades in all.
+  bed near the chest). 49 upgrades in all.
 
 ### Balance
 - Long actions earn more Work XP: a far haul or a smelt counts up to 8 times a quick chop, instead of the same.
