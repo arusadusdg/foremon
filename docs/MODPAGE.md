@@ -9,6 +9,8 @@ everything back to the chest.
 Every species is rated for every job from its stats, types, ability, moves, size and nature, so the crew you pick
 matters. A Machop chops, a Geodude digs, a Charmander smelts, a Pidgey hauls. Hover over any Pokemon to see why.
 
+![A level 55 Machop fells a whole tree in one swing](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/timber.gif)
+
 **Note:** get the latest version, it has all the fixes.
 
 ![Features](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/features.png)
@@ -42,6 +44,8 @@ matters. A Machop chops, a Geodude digs, a Charmander smelts, a Pidgey hauls. Ho
 - **Crafting:** makes the items you list in the filter until there is a stack of each, and asks for what it is short of.
 
 ![Screenshots](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/screenshots.png)
+
+![A crew of three builds a village house from Litematica](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/build.gif)
 
 ![Crew page with a Pokemon's job rating](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/shot_crew.png)
 
@@ -92,6 +96,4 @@ TikTok: [@foremoncobblemon](https://www.tiktok.com/@foremoncobblemon)
 
 ---
 
-<sub>Foremon was designed by its author and written with the help of an AI coding assistant (Anthropic's Claude), which
-wrote most of the code, tests and texts under the author's direction. Every feature is checked by automated tests in a
-real Minecraft server.</sub>
+*Foremon was designed by its author and written with the help of an AI coding assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's direction. Every feature is checked by automated tests in a real Minecraft server.*
