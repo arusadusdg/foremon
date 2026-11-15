@@ -452,6 +452,22 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    fun pickFromInTheMenuThenSneakClickWhereItGoes(helper: GameTestHelper) {
+        setup(helper)
+        val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
+        helper.setBlock(BlockPos(5, 1, 5), Blocks.CHEST)
+        val b = helper.absolutePos(BlockPos(5, 1, 5))
+        val player = helper.makeMockServerPlayerInLevel()
+        val first = dev.foremon.net.Actions.menuRouteStart(player, helper.level, depot, depot.pos)
+        if (first[0] != "foremon.msg.route_from") fail("picking this depot in the menu should start a route, got ${first[0]}")
+        val second = dev.foremon.net.Actions.routeClick(player, helper.level, depot, b, null)
+        if (second[0] != "foremon.msg.route_added") fail("the sneak-click should finish the route, got ${second[0]}")
+        if (depot.routes != listOf(depot.pos to b)) fail("expected one route from the depot to the chest, got ${depot.routes}")
+        SiteStore.of(helper.level).sites.remove(depot.pos)
+        helper.succeed()
+    }
+
     /** A job site of the test owner at an absolute position, with its chest. */
     private fun farSite(helper: GameTestHelper, pos: BlockPos, job: Job): Site {
         helper.level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState())

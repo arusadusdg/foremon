@@ -75,16 +75,29 @@ object Actions {
      * Both ends must be job sites of the same owner in this dimension (or the depot itself), within Supply Lines range.
      */
     fun remoteRoute(level: ServerLevel, s: Site, from: BlockPos, to: BlockPos): List<String> {
-        val reach = Rules.skill(level.server, s.owner, "supply_lines")
-        val sites = SiteStore.of(level).sites
-        for (p in listOf(from, to)) {
-            // The depot and its own chests were reached by hand already; other job sites need Remote Control.
-            if (p == s.pos || p in s.links) continue
-            if (sites[p]?.owner != s.owner) return listOf("foremon.fail.not_owner")
-            if (!Rules.has(level.server, s.owner, "remote_control")) return listOf("foremon.fail.needs_remote")
-            if (p.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.route_far", reach.toInt().toString())
-        }
+        for (p in listOf(from, to)) menuEndProblem(level, s, p)?.let { return it }
         return addRoute(level.server, s, from, to)
+    }
+
+    /**
+     * The route picker's "a chest in the world": where the route takes from is picked in the menu, and the next
+     * sneak-click on a chest (see [routeClick]) picks where it delivers to.
+     */
+    fun menuRouteStart(player: ServerPlayer, level: ServerLevel, s: Site, from: BlockPos): List<String> {
+        menuEndProblem(level, s, from)?.let { return it }
+        routeStart[player.uuid] = s.pos to from
+        return listOf("foremon.msg.route_from", "${from.x} ${from.y} ${from.z}")
+    }
+
+    /** Why [p], picked from the menu, cannot be a route end, or null if it can. */
+    private fun menuEndProblem(level: ServerLevel, s: Site, p: BlockPos): List<String>? {
+        // The depot and its own chests were reached by hand already; other job sites need Remote Control.
+        if (p == s.pos || p in s.links) return null
+        val reach = Rules.skill(level.server, s.owner, "supply_lines")
+        if (SiteStore.of(level).sites[p]?.owner != s.owner) return listOf("foremon.fail.not_owner")
+        if (!Rules.has(level.server, s.owner, "remote_control")) return listOf("foremon.fail.needs_remote")
+        if (p.distSqr(s.pos) > reach * reach) return listOf("foremon.fail.route_far", reach.toInt().toString())
+        return null
     }
 
     /**
@@ -186,6 +199,12 @@ object Actions {
             }
             "route_remove" -> { s.removeRoute(t.getInt("index")); reset(s) }
             "route_crew" -> crewToggle(player.server, s, t.getInt("index"), t.getUUID("mon"))?.let { Foremon.tell(player, it[0], *it.drop(1).toTypedArray()) }
+            // The screen has closed itself: no site view back, or it would open again.
+            "route_start" -> {
+                val msg = menuRouteStart(player, level, s, BlockPos.of(t.getLong("from")))
+                Foremon.tell(player, msg[0], *msg.drop(1).toTypedArray())
+                return
+            }
             "route_add" -> {
                 val msg = remoteRoute(level, s, BlockPos.of(t.getLong("from")), BlockPos.of(t.getLong("to")))
                 Foremon.tell(player, msg[0], *msg.drop(1).toTypedArray())

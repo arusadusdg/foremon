@@ -17,6 +17,8 @@ import kotlin.math.min
 /** The menu of one job site: pick the job, manage the crew, set the filter, start and pause. */
 private val BALLS_CLIENT = dev.foremon.world.BALLS
 private val LOAD_COLOR = 0xFF5AB0FF.toInt()
+/** Route picker row: "a chest in the world", picked with a sneak-click after the menu closes. */
+private const val PICK_IN_WORLD = Long.MIN_VALUE
 
 class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) {
     private var tab = 0
@@ -496,6 +498,8 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
         val sites = data.getList("sites", Tag.TAG_COMPOUND.toInt()).let { l -> (0 until l.size).map { l.getCompound(it) } }.sortedBy { it.getInt("dist") }
         val sitePos = sites.map { it.getLong("pos") }.toSet()
         val options = ArrayList<Opt>()
+        // Where it delivers to can also be any chest out in the world: close the menu and sneak-click it with the whistle.
+        if (pickFrom != null) options += Opt(PICK_IN_WORLD, ItemStack(dev.foremon.Foremon.WHISTLE), tr("foremon.gui.route_pick_world"), -1, false)
         options += Opt(pos, ItemStack(JOB_ICONS[Job.HAULING] ?: Items.PAPER), tr("foremon.gui.route_this_depot"), -1, false)
         for ((k, c) in chests().withIndex()) if (k > 0 && c.getLong("pos") !in sitePos)
             options += Opt(c.getLong("pos"), MonIcons.ball(c.getString("ball")), tr("foremon.gui.chest_extra", k), c.getInt("dist"), false)
@@ -513,14 +517,16 @@ class SiteScreen(var data: CompoundTag) : ForemonScreen(tr("foremon.gui.site")) 
             icon(g, o.icon, x + 2, ry)
             val bp = BlockPos.of(o.p)
             val where = if (o.dist < 0) "" else "  ${o.dist}m  (${bp.x} ${bp.y} ${bp.z})"
-            clip(g, Component.empty().append(o.name).append(where), x + 21, ry + 4, w - 24, if (off) Pal.MUTED else 0xFFFFFFFF.toInt())
+            clip(g, Component.empty().append(o.name).append(where), x + 21, ry + 4, w - 24, if (off) Pal.MUTED else if (o.p == PICK_IN_WORLD) Pal.STAR else 0xFFFFFFFF.toInt())
             if (hover(x, ry, w, rowH - 2)) when {
+                o.p == PICK_IN_WORLD -> tip = lines(tr("foremon.gui.route_pick_world"), muted(tr("foremon.gui.route_pick_world_tip")))
                 o.locked -> tip = lines(tr("foremon.gui.route_needs_remote"))
                 tooFar -> tip = lines(tr("foremon.fail.route_far", reach))
             }
             if (!off) click(x, ry, w, rowH - 2) {
                 val from = pickFrom
                 if (from == null) pickFrom = o.p
+                else if (o.p == PICK_IN_WORLD) { op("route_start") { t -> t.putLong("from", from) }; picking = false; pickFrom = null; onClose() }
                 else { op("route_add") { t -> t.putLong("from", from); t.putLong("to", o.p) }; picking = false; pickFrom = null }
             }
         }

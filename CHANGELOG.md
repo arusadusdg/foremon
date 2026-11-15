@@ -23,6 +23,8 @@
   work every route.
 - **Add route** works without Remote Control now: pick from this depot and its chests; other job sites still need
   Remote Control.
+- In **Add route**, after picking where to take from, pick **A chest in the world...**: the menu closes, and the next
+  chest you sneak-right-click with the whistle is where the route delivers to.
 
 ## 1.1.0
 
