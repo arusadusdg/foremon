@@ -235,6 +235,66 @@
       "y": 0
     },
     {
+      "id": "sharp_claws",
+      "branch": "labour",
+      "max": 3,
+      "base_cost": 90,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.25,
+      "icon": "minecraft:diamond_sword",
+      "x": 8,
+      "y": 1,
+      "requires": {
+        "speed_guard": 1
+      }
+    },
+    {
+      "id": "lookout",
+      "branch": "labour",
+      "max": 3,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0,
+      "per_level": 8,
+      "icon": "minecraft:spyglass",
+      "x": 8,
+      "y": 2,
+      "requires": {
+        "speed_guard": 1
+      }
+    },
+    {
+      "id": "green_thumb",
+      "branch": "labour",
+      "max": 3,
+      "base_cost": 90,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.1,
+      "icon": "minecraft:bone_meal",
+      "x": 4,
+      "y": 2,
+      "requires": {
+        "speed_farming": 2
+      }
+    },
+    {
+      "id": "quick_fetch",
+      "branch": "labour",
+      "max": 3,
+      "base_cost": 70,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.5,
+      "icon": "minecraft:barrel",
+      "x": 6,
+      "y": 2,
+      "requires": {
+        "speed_building": 1
+      }
+    },
+    {
       "id": "tree_feller",
       "branch": "labour",
       "max": 1,
@@ -469,6 +529,18 @@
       "y": 1
     },
     {
+      "id": "campfire_rest",
+      "branch": "care",
+      "max": 1,
+      "base_cost": 150,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 1.0,
+      "icon": "minecraft:campfire",
+      "x": 4,
+      "y": 0
+    },
+    {
       "id": "pack_mule",
       "branch": "logistics",
       "max": 4,
@@ -527,6 +599,21 @@
       "icon": "minecraft:compass",
       "x": 3,
       "y": 1
+    },
+    {
+      "id": "express_lanes",
+      "branch": "logistics",
+      "max": 3,
+      "base_cost": 80,
+      "cost_growth": 1.6,
+      "base": 0.0,
+      "per_level": 0.15,
+      "icon": "minecraft:powered_rail",
+      "x": 2,
+      "y": 2,
+      "requires": {
+        "supply_lines": 1
+      }
     },
     {
       "id": "item_magnet",

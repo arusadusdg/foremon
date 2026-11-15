@@ -208,7 +208,9 @@ object Ticker {
                 c.p.feedPokemon(1, false)
                 c.level.sendParticles(ParticleTypes.HEART, e.x, e.y + e.bbHeight, e.z, 3, 0.3, 0.2, 0.3, 0.0)
             } else {
-                w.restUntil = now + (Config.a.restTicks * (1.0 - c.skill("power_nap")).coerceAtLeast(0.2)).toLong()
+                // Campfire Rest (skill): a campfire or a bed near the chest makes naps shorter.
+                val camp = if (c.has("campfire_rest") && restSpot(c)) 0.6 else 1.0
+                w.restUntil = now + (Config.a.restTicks * (1.0 - c.skill("power_nap")).coerceAtLeast(0.2) * camp).toLong()
                 w.step = null; w.progress = 0
                 c.status("foremon.status.resting", c.p.species.name)
                 // No berries left: it goes to sleep hungry, and the owner can see why above its head until it dozes off.
@@ -266,6 +268,8 @@ object Ticker {
                 if (w.count(w.carried) < before) { logic.delivered(c); finished(c) }
             }
             Step.Kind.PICKUP -> { w.step = null; vacuum(c) }
+            // A patrol point reached: look around for a moment, then on to the next one.
+            Step.Kind.PATROL -> { w.step = null; w.patrolIndex++; w.planAt = now + 30; hold(e, null) }
             Step.Kind.WORK -> work(c, logic, step, score.mult)
         }
     }
@@ -311,7 +315,9 @@ object Ticker {
         if (Config.d.upkeep && c.level.random.nextDouble() >= c.skill("second_wind"))
             w.stamina -= style.staminaDrain * Config.upkeepFactor
         w.actions++; c.s.done++
-        Rules.tree().earn(Rules.state(c.server, c.s.owner), Config.a.workXpPerAction * style.xp)
+        // A long action (a far haul, a smelt) earns more than a quick one: up to 8 times as much.
+        val weight = (w.need / 30.0).coerceIn(1.0, 8.0)
+        Rules.tree().earn(Rules.state(c.server, c.s.owner), Config.a.workXpPerAction * style.xp * weight)
         PlayerStore.of(c.server).setDirty()
         // Fast Learner is a chance of double mastery XP, so it works in whole points.
         val level = Workers.addMastery(c.p, c.s.job, if (c.level.random.nextDouble() < c.skill("fast_learner")) 2 else 1)
@@ -333,6 +339,15 @@ object Ticker {
         }
         if ("truant" in c.profile.quirks) { w.truantRest = true; w.need = 40 }
         if (c.s.status.startsWith("foremon.status.")) status(c.level, c.s, "")
+    }
+
+    /** A campfire or a bed within 8 blocks of the chest. Checked only when a worker lies down. */
+    private fun restSpot(c: Ctx): Boolean {
+        for (q in BlockPos.betweenClosed(c.s.pos.offset(-8, -3, -8), c.s.pos.offset(8, 3, 8))) {
+            val st = c.level.getBlockState(q)
+            if (st.`is`(net.minecraft.tags.BlockTags.CAMPFIRES) || st.`is`(net.minecraft.tags.BlockTags.BEDS)) return true
+        }
+        return false
     }
 
     /** Everything that changes while working: friendship, food, skill tree, mastery and the surroundings. */

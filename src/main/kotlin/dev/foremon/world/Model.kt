@@ -97,35 +97,46 @@ class Filter {
 }
 
 /**
- * Guard: a box drawn on the map, all the way up and down, where workers may (allow) or may never place torches
- * ([TORCHES]) or hunt mobs ([PATROL]). Coordinates are world x/z, both ends included.
+ * Guard: a box drawn on the map, all the way up and down. [AREA]: guards only work inside areas (once there is one),
+ * and a guard posted to an area stays in it. [KEEP_OUT]: no hunting and no torches. [NO_TORCH]: hunting yes, torches no.
+ * Coordinates are world x/z, both ends included; [id] stays the same while other boxes come and go.
  */
-class Zone(val layer: Int, val allow: Boolean, val x1: Int, val z1: Int, val x2: Int, val z2: Int) {
+class Zone(val kind: Int, val id: Int, val x1: Int, val z1: Int, val x2: Int, val z2: Int) {
     fun has(x: Int, z: Int) = x in x1..x2 && z in z1..z2
 
     companion object {
+        const val AREA = 0
+        const val KEEP_OUT = 1
+        const val NO_TORCH = 2
+        /** What a check is for. */
         const val TORCHES = 0
         const val PATROL = 1
         const val MAX = 16
+        const val MAX_ROUTE = 16
 
-        /** Keep-out boxes always win; if [layer] has any "only here" boxes, only inside one of them. */
-        fun allows(zones: List<Zone>, layer: Int, x: Int, z: Int): Boolean {
-            var only = false; var inside = false
-            for (b in zones) if (b.layer == layer) {
-                if (!b.allow && b.has(x, z)) return false
-                if (b.allow) { only = true; if (b.has(x, z)) inside = true }
+        /** May guards do [what] at x/z? A guard [post]ed to an area only works inside that area. */
+        fun allows(zones: List<Zone>, what: Int, x: Int, z: Int, post: Int = 0): Boolean {
+            var areas = false; var inArea = false
+            for (b in zones) when (b.kind) {
+                KEEP_OUT -> if (b.has(x, z)) return false
+                NO_TORCH -> if (what == TORCHES && b.has(x, z)) return false
+                AREA -> {
+                    areas = true
+                    if (b.has(x, z)) inArea = true
+                    if (post != 0 && b.id == post && !b.has(x, z)) return false
+                }
             }
-            return !only || inside
+            return !areas || inArea
         }
 
-        fun pack(zones: List<Zone>) = zones.flatMap { listOf(it.layer, if (it.allow) 1 else 0, it.x1, it.z1, it.x2, it.z2) }.toIntArray()
-        fun unpack(a: IntArray) = (0 until a.size / 6).map { i -> Zone(a[6 * i], a[6 * i + 1] == 1, a[6 * i + 2], a[6 * i + 3], a[6 * i + 4], a[6 * i + 5]) }
+        fun pack(zones: List<Zone>) = zones.flatMap { listOf(it.kind, it.id, it.x1, it.z1, it.x2, it.z2) }.toIntArray()
+        fun unpack(a: IntArray) = (0 until a.size / 6).map { i -> Zone(a[6 * i], a[6 * i + 1], a[6 * i + 2], a[6 * i + 3], a[6 * i + 4], a[6 * i + 5]) }
     }
 }
 
 /** What a worker is heading to do. Saved state stays small on purpose: a step is cheap to re-plan after a restart. */
 class Step(val pos: BlockPos, val kind: Kind, val data: Int = 0) {
-    enum class Kind { WORK, CHEST, DELIVER, PICKUP }
+    enum class Kind { WORK, CHEST, DELIVER, PICKUP, PATROL }
 }
 
 enum class Emote { NONE, WORKING, TIRED, HUNGRY, NEED, STUCK, DONE, SLEEP }
@@ -165,6 +176,8 @@ class Worker(val pokemonId: UUID) {
     /** Hauling: what the current load looks like (shown in its paws and on the depot board), and when it started. */
     var hauling: ItemStack = ItemStack.EMPTY
     var loadStart = 0L
+    /** Guard: the patrol point it walks to next. */
+    var patrolIndex = 0
 
     fun count(list: List<ItemStack>) = list.sumOf { it.count }
 }
@@ -206,7 +219,13 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
     }
     /** Guard: where torches go and where mobs are hunted, see Zone. */
     val zones = ArrayList<Zone>()
-    fun zoneAllows(layer: Int, x: Int, z: Int) = Zone.allows(zones, layer, x, z)
+    fun zoneAllows(what: Int, x: Int, z: Int, post: Int = 0) = Zone.allows(zones, what, x, z, post)
+    /** Guard: the area each guard is posted to, by Pokemon (zone id). Guards without a post work every area. */
+    val posts = HashMap<UUID, Int>()
+    /** Guard: points idle guards walk between, in order. */
+    val patrol = ArrayList<BlockPos>()
+
+    fun removeZone(id: Int) { zones.removeIf { it.id == id }; posts.values.removeIf { it == id } }
 
     /** Build job: uploaded placement, see Plan. */
     var plan: Plan? = null
@@ -236,7 +255,8 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
         cornerA?.let { t.putLong("a", it.asLong()) }; cornerB?.let { t.putLong("b", it.asLong()) }
         t.putLongArray("links", links.map { it.asLong() })
         t.putLongArray("routes", routes.flatMap { listOf(it.first.asLong(), it.second.asLong()) })
-        if (zones.isNotEmpty()) t.putIntArray("zones", Zone.pack(zones))
+        if (zones.isNotEmpty()) t.putIntArray("zones2", Zone.pack(zones))
+        if (patrol.isNotEmpty()) t.putLongArray("patrol", patrol.map { it.asLong() })
         t.put("filter", filter.save())
         t.putString("ball", ball)
         t.put("chests", ListTag().also { l ->
@@ -252,6 +272,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                 c.putDouble("stamina", w.stamina); c.putLong("restUntil", w.restUntil); c.putInt("actions", w.actions)
                 c.putBoolean("fromPc", w.fromPc)
                 crews[w.pokemonId]?.let { (a, b) -> c.putLong("routeFrom", a.asLong()); c.putLong("routeTo", b.asLong()) }
+                posts[w.pokemonId]?.let { c.putInt("post", it) }
                 c.put("carried", stacks(w.carried, reg)); c.put("supplies", stacks(w.supplies, reg))
             })
         })
@@ -272,7 +293,8 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                 if (t.contains("b")) s.cornerB = BlockPos.of(t.getLong("b"))
                 t.getLongArray("links").forEach { s.links.add(BlockPos.of(it)) }
                 t.getLongArray("routes").let { a -> for (i in 0 until a.size / 2) s.routes.add(BlockPos.of(a[2 * i]) to BlockPos.of(a[2 * i + 1])) }
-                s.zones.addAll(Zone.unpack(t.getIntArray("zones")))
+                s.zones.addAll(Zone.unpack(t.getIntArray("zones2")))
+                t.getLongArray("patrol").forEach { s.patrol.add(BlockPos.of(it)) }
                 s.filter.load(t.getCompound("filter"))
                 if (t.contains("ball")) s.ball = t.getString("ball").takeIf { it in BALLS } ?: BALLS[0]
                 for (c in t.getList("chests", Tag.TAG_COMPOUND.toInt())) {
@@ -290,6 +312,7 @@ class Site(val pos: BlockPos, val owner: UUID, var ownerName: String) {
                     w.stamina = c.getDouble("stamina"); w.restUntil = c.getLong("restUntil"); w.actions = c.getInt("actions")
                     w.fromPc = c.getBoolean("fromPc")
                     if (c.contains("routeTo")) s.crews[w.pokemonId] = BlockPos.of(c.getLong("routeFrom")) to BlockPos.of(c.getLong("routeTo"))
+                    if (c.contains("post")) s.posts[w.pokemonId] = c.getInt("post")
                     stacks(c.getList("carried", Tag.TAG_COMPOUND.toInt()), reg, w.carried)
                     stacks(c.getList("supplies", Tag.TAG_COMPOUND.toInt()), reg, w.supplies)
                     s.workers.add(w)

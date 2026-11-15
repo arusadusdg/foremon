@@ -2,15 +2,35 @@
 
 ## 1.2.0
 
+### A new look
+- Every screen is now a journal: a red book with cream pages, the page title on a blue ribbon, and bookmarks down
+  the side to turn to Crew, Jobs, PC box, Chests (Routes, Map), Filter, Skills and All sites. Pages use both sides:
+  the crew on one, your party and the controls on the other; the PC box on one, everything about the Pokemon you
+  point at on the other.
+- The hub (job sites, skill tree, level perks, Work Dex, guide, server settings) is a journal too. The skill tree
+  spreads across both pages; level perks read top to bottom with who in your party has each one.
+
 ### Guard (new job)
 - Guards fight off hostile mobs in the work area, the ones going for a villager or a player first, then the ones
   closest to a villager. Neutral mobs that leave you alone, and mobs with a name tag, are left alone.
 - They put torches from the chest wherever a mob could spawn (no block light), on the ground and in buildings, not
   in deep caves. Loot from the mobs they beat goes into the chest.
-- The Guard site has a **Map** tab: a map of the work area seen from above. Drag on it to draw green boxes (only
-  here) or red boxes (keep out), one set for torches and one for hunting. Right-click a box to remove it.
-- Level perk **Cleave** (level 25 and 45): one swing hits up to 2, then 3 mobs. New skill **Vigilance** (Labour
-  branch): +10% Guard speed per level.
+- The Guard site has a **Map** page: the area seen from above, with tools to draw **guard areas** (guards only
+  work inside them), **keep out** boxes (no hunting, no torches) and **no torches** boxes, and a **patrol route**:
+  click stops on the map, and guards with nothing to do walk them in order. Select an area to **post** guards to
+  it; a posted guard stays in its area. **Big map** opens the same map as large as the screen allows.
+- Level perk **Cleave** (level 25 and 45): one swing hits up to 2, then 3 mobs.
+
+### Skill tree
+- New skills: **Vigilance** (+10% Guard speed), **Sharp Claws** (guards hit 25% harder), **Lookout** (guards hunt 8
+  blocks further), **Green Thumb** (harvests may grow nearby crops), **Quick Fetch** (builders carry 50% more per
+  trip), **Express Lanes** (hauling loads 15% quicker) and **Campfire Rest** (naps 40% shorter with a campfire or a
+  bed near the chest). 48 upgrades in all.
+
+### Balance
+- Long actions earn more Work XP: a far haul or a smelt counts up to 8 times a quick chop, instead of the same.
+- Workers start with 150 stamina instead of 100, and a berry gives 60 instead of 40, so crews stop to eat less
+  often. (Servers that already have a config file keep their own numbers.)
 
 ### Hauling
 - Haulers fly their routes for real when the world is running all the way along them: depot, the chest they take

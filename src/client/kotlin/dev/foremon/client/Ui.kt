@@ -20,36 +20,52 @@ import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
-/** Colours used by every screen, so the mod has one look. */
+/**
+ * Colours of the field journal every screen is drawn as: a red book with cream pages, a blue ribbon for the page
+ * title, red bookmarks down the side, and dark ink. All drawn in code, no textures.
+ */
 object Pal {
     const val DIM = 0xB0080A0E.toInt()
-    const val PANEL = 0xFF161B22.toInt()
-    const val CARD = 0xFF1F2630.toInt()
-    const val CARD_HOVER = 0xFF2A3442.toInt()
-    const val LINE = 0xFF34404F.toInt()
-    const val ACCENT = 0xFFE5533D.toInt()
-    const val ACCENT_HOVER = 0xFFF26B55.toInt()
-    const val GOOD = 0xFF4CC38A.toInt()
-    const val WARN = 0xFFE9B949.toInt()
-    const val BAD = 0xFFE5533D.toInt()
-    const val TEXT = 0xFFE6EDF3.toInt()
-    const val MUTED = 0xFF8B98A8.toInt()
-    const val STAR = 0xFFF7C948.toInt()
-    const val STAR_OFF = 0xFF3A4452.toInt()
+    // The book
+    const val COVER = 0xFF9E2B25.toInt()
+    const val COVER_DARK = 0xFF5A1612.toInt()
+    const val COVER_HI = 0xFFBF4237.toInt()
+    const val PAGE = 0xFFF4E9CF.toInt()
+    const val PAGE_EDGE = 0xFFD3C29C.toInt()
+    const val FRAME = 0xFF9C8259.toInt()
+    const val RIBBON = 0xFF2F62B0.toInt()
+    const val RIBBON_DARK = 0xFF1C3F7A.toInt()
+    const val TAB = 0xFFB3362D.toInt()
+    const val TAB_ACTIVE = 0xFFE0563F.toInt()
+    // Ink
+    const val INK = 0xFF2E2418.toInt()
+    const val TEXT = INK
+    const val MUTED = 0xFF7A6A52.toInt()
+    const val GOOD = 0xFF2E7D32.toInt()
+    const val WARN = 0xFFB25E00.toInt()
+    const val BAD = 0xFFB3261E.toInt()
+    const val STAR = 0xFFB8860B.toInt()
+    const val STAR_OFF = 0xFFCDBB94.toInt()
+    const val NAME = 0xFF1F4E9C.toInt()
+    const val LINE = 0xFFB9A57E.toInt()
+    // Controls
+    const val BTN = 0xFFF8EECD.toInt()
+    const val BTN_HOT = 0xFFFFF8E0.toInt()
+    const val BTN_EDGE = 0xFF6B4F2A.toInt()
+    const val BTN_SHADE = 0xFFD9C79B.toInt()
+    const val BTN_ACCENT = 0xFFE8BE4F.toInt()
+    const val BTN_ACCENT_HOT = 0xFFF3CF6B.toInt()
+    const val BTN_OFF = 0xFFD8CDB0.toInt()
+    const val BTN_DANGER = 0xFFC94B3C.toInt()
+    const val ROW = 0xFFFAF3DF.toInt()
+    const val ROW_HOT = 0xFFFFF9E8.toInt()
+    const val ROW_SEL = 0xFFF0DCA0.toInt()
+    const val ROW_EDGE = 0xFF9C8259.toInt()
+    const val BAR_BG = 0xFFD9CBA6.toInt()
+    const val LOAD = 0xFF3D7CC9.toInt()
     const val BALL_RED = 0xFFE03A3A.toInt()
     const val BALL_WHITE = 0xFFF4F4F4.toInt()
     const val BALL_BLACK = 0xFF141414.toInt()
-    // The blues of the Pokemon party menu and the greens of a PC box.
-    const val POKE_PANEL = 0xFF2A6FB5.toInt()
-    const val POKE_PANEL_HI = 0xFF4A93DC.toInt()
-    const val POKE_PANEL_HOT = 0xFF4E9BE6.toInt()
-    const val POKE_PANEL_HOT_HI = 0xFF7DBCF5.toInt()
-    const val POKE_EDGE = 0xFF0F2F57.toInt()
-    const val POKE_TEXT_SOFT = 0xFFD3E6FA.toInt()
-    const val BOX_HEADER = 0xFF2E9E5B.toInt()
-    const val BOX_HEADER_HI = 0xFF4CC07A.toInt()
-    const val BOX_A = 0xFFCDEED4.toInt()
-    const val BOX_B = 0xFFB9E3C2.toInt()
 }
 
 fun tr(key: String, vararg args: Any): MutableComponent = Component.translatable(key, *args)
@@ -94,10 +110,27 @@ object MonIcons {
     }
 }
 
+/** Where a book sits on screen, and its two pages. Content goes between [top] and [bottom]. */
+class Book(val x: Int, val y: Int, val w: Int, val h: Int) {
+    val mid get() = x + w / 2
+    /** Left edge and width of each page's writing area. */
+    val lx get() = x + 16
+    val rx get() = mid + 10
+    val pw get() = w / 2 - 26
+    /** Top of the writing area, under the ribbon on the left page. */
+    val top get() = y + 30
+    /** Top of the right page, which has no ribbon. */
+    val rtop get() = y + 14
+    val bottom get() = y + h - 13
+}
+
 /**
  * Base for all screens. Immediate-mode: a screen describes itself from scratch every frame in [draw],
  * and every button it draws registers its own click area for that frame. No widget bookkeeping,
  * so the screen can never show stale state after the server sends an update.
+ *
+ * Every screen is a book, like a colony journal: [book] draws it, [ribbon] titles the left page, [bookmark] adds a
+ * tab down the left (or right) edge, and [button] / [row] are the controls written on its pages.
  */
 abstract class ForemonScreen(title: Component) : Screen(title) {
     private class Hit(val x: Int, val y: Int, val w: Int, val h: Int, val action: (Int) -> Unit)
@@ -124,8 +157,10 @@ abstract class ForemonScreen(title: Component) : Screen(title) {
     }
 
     override fun mouseClicked(x: Double, y: Double, button: Int): Boolean {
+        // Actions that look at the mouse (the map) see where the click was, not where the mouse was last frame.
+        mx = x.toInt(); my = y.toInt()
         for (h in hits.asReversed()) if (x >= h.x && x < h.x + h.w && y >= h.y && y < h.y + h.h) {
-            mc.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f))
+            mc.soundManager.play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.6f, 0.6f))
             h.action(button)
             return true
         }
@@ -136,30 +171,90 @@ abstract class ForemonScreen(title: Component) : Screen(title) {
 
     protected fun click(x: Int, y: Int, w: Int, h: Int, action: (Int) -> Unit) { hits.add(Hit(x, y, w, h, action)) }
 
-    protected fun panel(g: GuiGraphics, x: Int, y: Int, w: Int, h: Int, color: Int = Pal.PANEL) {
-        g.fill(x, y, x + w, y + h, color)
-        g.renderOutline(x, y, w, h, Pal.LINE)
+    // ------------------------------------------------------------ the book
+
+    /** The book for this screen size: as big as fits, up to 420 x 248, with room for bookmarks on both sides. */
+    protected fun layout(): Book {
+        val w = minOf(420, width - 60); val h = minOf(248, height - 16)
+        return Book((width - w) / 2, (height - h) / 2, w, h)
     }
 
-    /** The main window of a screen: a panel with a Poke Ball seam and button along its top edge. */
-    protected fun window(g: GuiGraphics, x: Int, y: Int, w: Int, h: Int) {
-        g.fill(x, y - 5, x + w, y - 1, Pal.BALL_RED)
-        g.fill(x, y - 6, x + w, y - 5, Pal.BALL_BLACK)
-        g.fill(x - 1, y - 6, x, y, Pal.BALL_BLACK); g.fill(x + w, y - 6, x + w + 1, y, Pal.BALL_BLACK)
-        g.fill(x, y - 1, x + w, y + 1, Pal.BALL_BLACK)
-        panel(g, x, y, w, h)
-        val cx = x + w / 2
-        g.fill(cx - 6, y - 7, cx + 6, y + 5, Pal.BALL_BLACK)
-        g.fill(cx - 5, y - 6, cx + 5, y + 4, Pal.BALL_WHITE)
-        g.fill(cx - 3, y - 4, cx + 3, y + 2, Pal.BALL_BLACK)
-        g.fill(cx - 2, y - 3, cx + 2, y + 1, Pal.BALL_WHITE)
+    /** Red leather cover, two cream pages with a shaded spine, and a thin frame on each page. */
+    protected fun book(g: GuiGraphics, b: Book) {
+        val x = b.x; val y = b.y; val w = b.w; val h = b.h; val mid = b.mid
+        g.fill(x + 1, y, x + w - 1, y + h, Pal.COVER_DARK); g.fill(x, y + 1, x + w, y + h - 1, Pal.COVER_DARK)
+        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, Pal.COVER)
+        g.fill(x + 2, y + 1, x + w - 2, y + 2, Pal.COVER_HI)
+        // Page block: the edges of the pages below show along the bottom.
+        g.fill(x + 5, y + 4, x + w - 5, y + h - 3, Pal.PAGE_EDGE)
+        g.fill(x + 5, y + 4, x + w - 5, y + h - 5, Pal.PAGE)
+        for (i in 1..2) g.fill(x + 5, y + h - 5 + i - 1, x + w - 5, y + h - 4 + i - 1, if (i == 1) Pal.LINE else Pal.PAGE_EDGE)
+        // The spine: pages darken towards the fold.
+        for (i in 0 until 7) {
+            val a = (0x07 + i * 0x06) shl 24
+            g.fill(mid - 7 + i, y + 4, mid - 6 + i, y + h - 5, a)
+            g.fill(mid + 6 - i, y + 4, mid + 7 - i, y + h - 5, a)
+        }
+        g.fill(mid, y + 4, mid + 1, y + h - 5, 0x50000000)
+        g.fill(mid - 3, y, mid + 3, y + 5, Pal.COVER_DARK); g.fill(mid - 3, y + h - 5, mid + 3, y + h, Pal.COVER_DARK)
+        // A thin double frame on each page, with dots in the corners.
+        for ((px, pw) in listOf(x + 9 to mid - x - 17, mid + 8 to x + w - mid - 17)) {
+            g.renderOutline(px, y + 8, pw, h - 18, Pal.FRAME)
+            g.renderOutline(px + 2, y + 10, pw - 4, h - 22, 0x609C8259)
+            for (cx in listOf(px - 1, px + pw - 2)) for (cy in listOf(y + 7, y + h - 12)) g.fill(cx, cy, cx + 3, cy + 3, Pal.FRAME)
+        }
     }
 
-    /** A panel in the style of the Pokemon party menu: blue, lighter along the top, with a dark edge. */
-    protected fun pokePanel(g: GuiGraphics, x: Int, y: Int, w: Int, h: Int, hot: Boolean) {
-        g.fill(x, y, x + w, y + h, Pal.POKE_EDGE)
-        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, if (hot) Pal.POKE_PANEL_HOT else Pal.POKE_PANEL)
-        g.fill(x + 1, y + 1, x + w - 1, y + 1 + (h - 2) / 3, if (hot) Pal.POKE_PANEL_HOT_HI else Pal.POKE_PANEL_HI)
+    /** The page title: a blue ribbon across the top of the left page, hanging out past the cover. */
+    protected fun ribbon(g: GuiGraphics, b: Book, title: Component, right: Component? = null) {
+        val y = b.y + 12
+        g.fill(b.x - 12, y + 3, b.x - 4, y + 16, Pal.RIBBON_DARK)
+        g.fill(b.x - 12, y + 8, b.x - 9, y + 11, 0xFF3A1010.toInt())
+        g.fill(b.x - 8, y, b.mid - 10, y + 13, Pal.RIBBON)
+        g.fill(b.x - 8, y + 12, b.mid - 10, y + 13, Pal.RIBBON_DARK)
+        g.fill(b.x - 8, y, b.mid - 10, y + 1, 0xFF4A7CC8.toInt())
+        g.drawString(font, font.plainSubstrByWidth(title.string, b.mid - b.x - 30), b.x, y + 3, 0xFFFFFFFF.toInt(), true)
+        if (right != null) g.drawString(font, right, b.mid - 14 - font.width(right), y + 3, 0xFFFFE9A8.toInt(), true)
+    }
+
+    /**
+     * A bookmark tab sticking out of the book's [left] (or right) edge, [i]-th from the top, with an item for an
+     * icon. The open one sticks out further and is brighter.
+     */
+    protected fun bookmark(g: GuiGraphics, b: Book, i: Int, icon: ItemStack, active: Boolean, label: Component, left: Boolean = true, action: () -> Unit) {
+        val ty = b.y + 34 + i * 23
+        val out = if (active) 26 else 22
+        val x1 = if (left) b.x - out else b.x + b.w - 2
+        val x2 = if (left) b.x + 2 else b.x + b.w - 2 + out
+        val hot = hover(x1, ty, x2 - x1, 20)
+        g.fill(x1 + 1, ty, x2 - 1, ty + 20, Pal.COVER_DARK); g.fill(x1, ty + 1, x2, ty + 19, Pal.COVER_DARK)
+        g.fill(x1 + 1, ty + 1, x2 - 1, ty + 19, if (active || hot) Pal.TAB_ACTIVE else Pal.TAB)
+        g.fill(x1 + 2, ty + 1, x2 - 2, ty + 2, 0x40FFFFFF)
+        icon(g, icon, if (left) x1 + 4 else x2 - 20, ty + 2)
+        if (hot) tip = listOf(label)
+        click(x1, ty, x2 - x1, 20) { action() }
+    }
+
+    /** A heading in ink, centred on [cx], cut to a page's width. */
+    protected fun heading(g: GuiGraphics, c: Component, cx: Int, y: Int, color: Int = Pal.INK) {
+        val s = c.copy().withStyle(ChatFormatting.BOLD)
+        val max = layout().pw
+        if (font.width(s) <= max) { g.drawString(font, s, cx - font.width(s) / 2, y, color, false); return }
+        val cut = Component.literal(font.plainSubstrByWidth(c.string, max - 14) + "...").withStyle(ChatFormatting.BOLD)
+        g.drawString(font, cut, cx - font.width(cut) / 2, y, color, false)
+    }
+
+    /** A boxed line of a list: a light card with a brown edge. */
+    protected fun row(g: GuiGraphics, x: Int, y: Int, w: Int, h: Int, hot: Boolean = false, selected: Boolean = false) {
+        g.fill(x, y, x + w, y + h, Pal.ROW_EDGE)
+        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, if (selected) Pal.ROW_SEL else if (hot) Pal.ROW_HOT else Pal.ROW)
+    }
+
+    /** Text wrapped to [w] pixels, at most [maxLines] lines. Returns the height used. */
+    protected fun para(g: GuiGraphics, c: Component, x: Int, y: Int, w: Int, color: Int = Pal.INK, maxLines: Int = 20): Int {
+        val lines = font.split(c, w).take(maxLines)
+        for ((i, l) in lines.withIndex()) g.drawString(font, l, x, y + i * 10, color, false)
+        return lines.size * 10
     }
 
     /** A tiny Poke Ball, 7 pixels across. */
@@ -170,68 +265,58 @@ abstract class ForemonScreen(title: Component) : Screen(title) {
         g.fill(x + 3, y + 3, x + 4, y + 4, Pal.BALL_WHITE)
     }
 
-    /** A tiled background like the advancements screen, using the game's own advancement backgrounds. */
-    protected fun advBackground(g: GuiGraphics, x: Int, y: Int, w: Int, h: Int, name: String) {
-        val tex = ResourceLocation.withDefaultNamespace("textures/gui/advancements/backgrounds/$name.png")
-        g.enableScissor(x, y, x + w, y + h)
-        var ty = y
-        while (ty < y + h) {
-            var tx = x
-            while (tx < x + w) { g.blit(tex, tx, ty, 0f, 0f, 16, 16, 16, 16); tx += 16 }
-            ty += 16
-        }
-        g.disableScissor()
-        g.fill(x, y, x + w, y + h, 0x48000000)
-        g.renderOutline(x, y, w, h, 0xFF000000.toInt())
-        g.renderOutline(x + 1, y + 1, w - 2, h - 2, 0xFF555555.toInt())
-    }
-
     /** One of the game's advancement frames: "task", "goal" or "challenge", gold once obtained. */
     protected fun advFrame(g: GuiGraphics, x: Int, y: Int, kind: String, obtained: Boolean) {
         g.blitSprite(ResourceLocation.withDefaultNamespace("advancements/${kind}_frame_${if (obtained) "obtained" else "unobtained"}"), x, y, 26, 26)
     }
 
-    /** A connector between two frames, drawn like the advancements screen: black with a light core. */
+    /** A connector between two frames, in ink: brown with a gold core once the step before it is done. */
     protected fun advLine(g: GuiGraphics, x1: Int, y1: Int, x2: Int, y2: Int, lit: Boolean) {
-        val inner = if (lit) 0xFFFFFFFF.toInt() else 0xFF7A7A7A.toInt()
+        val inner = if (lit) Pal.BTN_ACCENT else Pal.STAR_OFF
         val mid = (y1 + y2) / 2
-        for ((pad, color) in listOf(1 to 0xFF000000.toInt(), 0 to inner)) {
+        for ((pad, color) in listOf(1 to Pal.BTN_EDGE, 0 to inner)) {
             fun seg(ax: Int, ay: Int, bx: Int, by: Int) =
                 g.fill(minOf(ax, bx) - pad, minOf(ay, by) - pad, maxOf(ax, bx) + pad + 1, maxOf(ay, by) + pad + 1, color)
             if (y1 == y2) seg(x1, y1, x2, y2) else { seg(x1, y1, x1, mid); seg(x1, mid, x2, mid); seg(x2, mid, x2, y2) }
         }
     }
 
-    /** Text on a dark plate, so it stays readable on a textured background. */
+    /** A small label on a light card, centred on [cx]. */
     protected fun plate(g: GuiGraphics, s: String, cx: Int, y: Int, color: Int) {
         val w = font.width(s)
-        g.fill(cx - w / 2 - 2, y - 1, cx + w / 2 + 2, y + 9, 0xC0000000.toInt())
+        g.fill(cx - w / 2 - 3, y - 2, cx + w / 2 + 3, y + 9, Pal.ROW_EDGE)
+        g.fill(cx - w / 2 - 2, y - 1, cx + w / 2 + 2, y + 8, Pal.ROW)
         g.drawString(font, s, cx - w / 2, y, color, false)
     }
 
-    protected fun text(g: GuiGraphics, c: Component, x: Int, y: Int, color: Int = Pal.TEXT) { g.drawString(font, c, x, y, color, false) }
-    protected fun text(g: GuiGraphics, s: String, x: Int, y: Int, color: Int = Pal.TEXT) { g.drawString(font, s, x, y, color, false) }
+    protected fun text(g: GuiGraphics, c: Component, x: Int, y: Int, color: Int = Pal.INK) { g.drawString(font, c, x, y, color, false) }
+    protected fun text(g: GuiGraphics, s: String, x: Int, y: Int, color: Int = Pal.INK) { g.drawString(font, s, x, y, color, false) }
 
     /** Text cut to [w] pixels with an ellipsis. */
-    protected fun clip(g: GuiGraphics, c: Component, x: Int, y: Int, w: Int, color: Int = Pal.TEXT) {
+    protected fun clip(g: GuiGraphics, c: Component, x: Int, y: Int, w: Int, color: Int = Pal.INK) {
         if (font.width(c) <= w) { text(g, c, x, y, color); return }
         text(g, font.plainSubstrByWidth(c.string, w - 6) + "...", x, y, color)
     }
 
+    /** A cream button with a brown edge. [accent]: gold, for the main action or the one picked. [danger]: red. */
     protected fun button(
         g: GuiGraphics, x: Int, y: Int, w: Int, h: Int, label: Component,
-        enabled: Boolean = true, accent: Boolean = false, tooltip: List<Component>? = null, action: () -> Unit,
+        enabled: Boolean = true, accent: Boolean = false, tooltip: List<Component>? = null, danger: Boolean = false, action: () -> Unit,
     ) {
         val hot = hover(x, y, w, h)
         val bg = when {
-            !enabled -> 0xFF161B22.toInt()
-            accent -> if (hot) Pal.ACCENT_HOVER else Pal.ACCENT
-            else -> if (hot) Pal.CARD_HOVER else Pal.CARD
+            !enabled -> Pal.BTN_OFF
+            danger -> Pal.BTN_DANGER
+            accent -> if (hot) Pal.BTN_ACCENT_HOT else Pal.BTN_ACCENT
+            else -> if (hot) Pal.BTN_HOT else Pal.BTN
         }
-        g.fill(x, y, x + w, y + h, bg)
-        g.renderOutline(x, y, w, h, if (hot && enabled) Pal.TEXT else Pal.LINE)
-        val tw = font.width(label)
-        g.drawString(font, label, x + (w - tw) / 2, y + (h - 8) / 2, if (enabled) Pal.TEXT else Pal.MUTED, false)
+        g.fill(x + 1, y, x + w - 1, y + h, Pal.BTN_EDGE); g.fill(x, y + 1, x + w, y + h - 1, Pal.BTN_EDGE)
+        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, bg)
+        g.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, if (danger) 0xFF9E3528.toInt() else Pal.BTN_SHADE)
+        val s = font.plainSubstrByWidth(label.string, w - 4)
+        val tc = if (!enabled) Pal.MUTED else if (danger) 0xFFFFFFFF.toInt() else Pal.INK
+        if (s.length == label.string.length) g.drawString(font, label, x + (w - font.width(label)) / 2, y + (h - 7) / 2, tc, false)
+        else g.drawString(font, s, x + (w - font.width(s)) / 2, y + (h - 7) / 2, tc, false)
         if (hot && tooltip != null) tip = tooltip
         if (enabled) click(x, y, w, h) { action() }
     }
@@ -246,12 +331,12 @@ abstract class ForemonScreen(title: Component) : Screen(title) {
     }
 
     protected fun bar(g: GuiGraphics, x: Int, y: Int, w: Int, h: Int, frac: Double, color: Int) {
-        g.fill(x, y, x + w, y + h, 0xFF0E1217.toInt())
+        g.fill(x, y, x + w, y + h, Pal.BAR_BG)
         g.fill(x, y, x + (w * frac.coerceIn(0.0, 1.0)).toInt(), y + h, color)
     }
 
     protected fun stars(g: GuiGraphics, x: Int, y: Int, n: Int) {
-        for (i in 0 until 5) g.drawString(font, "★", x + i * 7, y, if (i < n) Pal.STAR else Pal.STAR_OFF, false)
+        for (i in 0 until 5) g.drawString(font, "\u2605", x + i * 7, y, if (i < n) Pal.STAR else Pal.STAR_OFF, false)
     }
 
     protected fun lines(vararg c: Component): List<Component> = c.toList()

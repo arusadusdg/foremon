@@ -15,6 +15,7 @@ import dev.foremon.world.PlayerStore
 import dev.foremon.world.Site
 import dev.foremon.world.SiteStore
 import dev.foremon.world.Workers
+import dev.foremon.world.Zone
 import dev.foremon.world.BALLS
 import io.netty.buffer.Unpooled
 import net.minecraft.core.BlockPos
@@ -211,17 +212,38 @@ object Actions {
                 reset(s)
             }
             "zone_add" -> {
-                // From the map in the Guard screen. Cut to the work area, since that is all the map shows.
-                val r = Workers.radius(level, s); val layer = t.getInt("layer")
+                // From the map in the Guard screen. Cut to the area the map shows.
+                val r = mapRadius(level, s); val kind = t.getInt("kind")
                 val x1 = maxOf(minOf(t.getInt("x1"), t.getInt("x2")), s.pos.x - r); val x2 = minOf(maxOf(t.getInt("x1"), t.getInt("x2")), s.pos.x + r)
                 val z1 = maxOf(minOf(t.getInt("z1"), t.getInt("z2")), s.pos.z - r); val z2 = minOf(maxOf(t.getInt("z1"), t.getInt("z2")), s.pos.z + r)
-                if (layer in 0..1 && x1 <= x2 && z1 <= z2) {
-                    if (s.zones.size >= dev.foremon.world.Zone.MAX) Foremon.tell(player, "foremon.fail.zone_limit", dev.foremon.world.Zone.MAX.toString())
-                    else { s.zones.add(dev.foremon.world.Zone(layer, t.getBoolean("allow"), x1, z1, x2, z2)); reset(s) }
+                if (kind in 0..2 && x1 <= x2 && z1 <= z2) {
+                    if (s.zones.size >= Zone.MAX) Foremon.tell(player, "foremon.fail.zone_limit", Zone.MAX.toString())
+                    else { s.zones.add(Zone(kind, (s.zones.maxOfOrNull { it.id } ?: 0) + 1, x1, z1, x2, z2)); reset(s) }
                 }
             }
-            "zone_remove" -> { if (t.getInt("index") in s.zones.indices) s.zones.removeAt(t.getInt("index")); reset(s) }
-            "zone_clear" -> { s.zones.removeIf { it.layer == t.getInt("layer") }; reset(s) }
+            "zone_remove" -> { s.removeZone(t.getInt("id")); reset(s) }
+            "zone_clear" -> { s.zones.clear(); s.posts.clear(); reset(s) }
+            // A guard is posted to one area (or taken off it with a second click).
+            "guard_post" -> {
+                val mon = t.getUUID("mon"); val id = t.getInt("id")
+                if (s.workers.any { it.pokemonId == mon } && s.zones.any { it.id == id && it.kind == Zone.AREA }) {
+                    if (s.posts[mon] == id) s.posts.remove(mon) else s.posts[mon] = id
+                    reset(s)
+                }
+            }
+            "patrol_add" -> {
+                val x = t.getInt("x"); val z = t.getInt("z"); val r = mapRadius(level, s)
+                if (kotlin.math.abs(x - s.pos.x) <= r && kotlin.math.abs(z - s.pos.z) <= r) {
+                    if (s.patrol.size >= Zone.MAX_ROUTE) Foremon.tell(player, "foremon.fail.route_points", Zone.MAX_ROUTE.toString())
+                    else {
+                        // The ground there, if the chunk is loaded; the chest's height otherwise.
+                        val y = if (level.isLoaded(BlockPos(x, s.pos.y, z))) level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) else s.pos.y
+                        s.patrol.add(BlockPos(x, y, z))
+                    }
+                }
+            }
+            "patrol_remove" -> { if (t.getInt("index") in s.patrol.indices) s.patrol.removeAt(t.getInt("index")) }
+            "patrol_clear" -> s.patrol.clear()
             "link_remove" -> s.removeLink(BlockPos.of(t.getLong("chest")))
             "clear_area" -> { s.cornerA = null; s.cornerB = null; reset(s) }
             "clear_links" -> { s.links.clear(); s.chests.clear() }
@@ -241,6 +263,9 @@ object Actions {
         store.setDirty()
         sendSite(player, level, s)
     }
+
+    /** How far the Guard map reaches from the chest: the work area, plus how far guards hunt past it (Lookout). */
+    fun mapRadius(level: ServerLevel, s: Site) = Workers.radius(level, s) + Rules.skill(level.server, s.owner, "lookout").toInt()
 
     /** Forget everything that was only true for the previous job, area or filter. */
     fun reset(s: Site) {
@@ -326,7 +351,9 @@ object Actions {
                 c.put("crew", ListTag().also { cl -> for (w in s.workers) if (s.crews[w.pokemonId] == (a to b)) cl.add(StringTag.valueOf(w.pokemonId.toString())) })
             })
         })
-        t.putIntArray("zones", dev.foremon.world.Zone.pack(s.zones))
+        t.putIntArray("zones", Zone.pack(s.zones))
+        t.putLongArray("patrol", s.patrol.map { it.asLong() })
+        t.putInt("mapRadius", mapRadius(level, s))
         Jobs.box(s)?.let { (lo, hi) -> t.putLong("lo", lo.asLong()); t.putLong("hi", hi.asLong()); t.putBoolean("areaDone", s.cornerB != null) }
         s.plan?.let { p -> t.put("plan", CompoundTag().also { c -> c.putString("name", p.name); c.putInt("size", p.size); c.putInt("index", p.index); c.putInt("placed", p.placed); c.putInt("skipped", p.skipped) }) }
 
@@ -336,6 +363,7 @@ object Actions {
                 val c = mon(p)
                 Workers.profile(w)?.let { scores(it, p, c, s.job) }
                 c.putDouble("stamina", w.stamina); c.putDouble("maxStamina", Workers.maxStamina(level, s, w))
+                s.posts[w.pokemonId]?.let { c.putInt("post", it) }
                 c.putBoolean("resting", w.restUntil > level.gameTime); c.putInt("emote", w.emote.ordinal)
                 c.putInt("carried", w.count(w.carried) + w.count(w.supplies)); c.putInt("actions", w.actions)
                 // How far along the current action is: the load bar of a hauler.

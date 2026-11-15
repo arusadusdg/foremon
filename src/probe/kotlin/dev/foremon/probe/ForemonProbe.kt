@@ -86,24 +86,58 @@ object ForemonProbe : ClientModInitializer {
         index++; ticks = 0
     }
 
-    // Same layout maths as SiteScreen.draw, so the clicks land where a player would click.
+    // Same layout maths as ForemonScreen.layout() and the pages, so the clicks land where a player would click.
     private class Layout(sw: Int, sh: Int) {
-        val w = min(430, sw - 16); val h = min(236, sh - 16)
+        val w = min(420, sw - 60); val h = min(248, sh - 16)
         val x0 = (sw - w) / 2; val y0 = (sh - h) / 2
-        val cx = x0 + 100; val cw = w - 214
-        fun party(i: Int) = (cx + i * 27 + 12) to (y0 + 52 + (h - 66) - 34 + 16)
-        val start get() = (x0 + w - 108 + 51) to (y0 + 32 + 12)
-        val crewTab get() = (cx + cw / 8) to (y0 + 40)
-        val pcTab get() = (cx + cw / 4 + cw / 8) to (y0 + 40)
-        val filterTab get() = (cx + cw / 4 * 3 + cw / 8) to (y0 + 40)
+        val mid = x0 + w / 2
+        val lx = x0 + 16; val rx = mid + 10; val pw = w / 2 - 26
+        val top = y0 + 30; val rtop = y0 + 14; val bottom = y0 + h - 13
+        /** Bookmark [i] down the left edge of the book. */
+        fun mark(i: Int) = (x0 - 10) to (y0 + 34 + i * 23 + 10)
+        val crewTab get() = mark(0)
+        val jobsTab get() = mark(1)
+        val pcTab get() = mark(2)
+        val chestsTab get() = mark(3)
+        val filterTab get() = mark(4)
+        /** Party slot [i] on the crew page. */
+        fun party(i: Int) = (rx + i * 30 + 14) to (bottom - 32 + 16)
+        /** Start / Pause on the crew page. A two-line status pushes it down a line, so aim at the lower half. */
+        val start get() = (lx + pw / 2) to (top + 28)
+        /** The first worker on the crew page. */
+        val worker get() = (rx + pw / 2) to (rtop + 14 + 11)
+        /** Job [i] on the jobs page. */
+        fun job(i: Int) = (lx + pw / 2) to (top + i * 20 + 9)
         /** Slot [i] of the PC box grid (6 columns, 5 rows). */
         fun pcSlot(i: Int): Pair<Int, Int> {
-            val areaH = h - 66
-            val cell = minOf(24, minOf((cw - 4) / 6, (areaH - 36) / 5))
-            val gx = cx + (cw - cell * 6) / 2; val gy = y0 + 52 + 22
+            val cell = minOf(26, pw / 6)
+            val gx = lx + (pw - cell * 6) / 2; val gy = top + 22
             return (gx + (i % 6) * cell + cell / 2) to (gy + (i / 6) * cell + cell / 2)
         }
-        fun job(i: Int) = (x0 + 50) to (y0 + 32 + i * 22 + 10)
+        /** Skill tree branch button [i]. */
+        fun branch(i: Int): Pair<Int, Int> { val bw = (pw - 3) / 2; return ((if (i < 2) lx else rx) + (i % 2) * (bw + 3) + bw / 2) to (top + 7) }
+        /** The centre of skill node ([nx], [ny]) in a branch [cols] wide and [rows] high. */
+        fun skillNode(cols: Int, rows: Int, nx: Int, ny: Int): Pair<Int, Int> {
+            val aw = rx + pw - lx; val ay = top + 20; val ah = bottom - ay
+            val cellW = minOf(56, aw / cols); val cellH = minOf(46, ah / rows)
+            val gx = lx + (aw - cols * cellW) / 2; val gy = ay + (ah - rows * cellH) / 2
+            return (gx + nx * cellW + (cellW - 26) / 2 + 13) to (gy + ny * cellH + 14)
+        }
+        /** Cell ([i], [j]) of the Guard map on the left page, for a map [n] cells across. */
+        fun mapCell(n: Int, i: Int, j: Int): Pair<Int, Int> { val cell = maxOf(1, minOf(pw, bottom - top - 2) / n); return (lx + i * cell + cell / 2) to (top + j * cell + cell / 2) }
+        /** Map tool [i] on the right page. */
+        fun mapTool(i: Int) = ((pw - 3) / 2).let { cw -> (rx + (i % 2) * (cw + 3) + cw / 2) to (rtop + 14 + (i / 2) * 16 + 7) }
+        val bigMapButton get() = ((pw - 3) / 2).let { half -> (rx + half + 3 + (pw - half - 3) / 2) to (bottom - 8) }
+    }
+
+    /**
+     * Steps that pick job [i] on the jobs page, then go back to the crew page. One click per step: a screen only knows
+     * where its buttons are once it has drawn the page they are on.
+     */
+    private fun pickJob(i: Int, delay: Int = 5, until: ((Minecraft) -> Boolean)? = null) {
+        step("open the jobs page", delay, until) { mc -> val s = mc.screen!!; click(mc, Layout(s.width, s.height).jobsTab) }
+        step("pick job $i", 3) { mc -> val s = mc.screen!!; click(mc, Layout(s.width, s.height).job(i)) }
+        step("back to the crew page", 3) { mc -> val s = mc.screen!!; click(mc, Layout(s.width, s.height).crewTab) }
     }
 
     private fun click(mc: Minecraft, p: Pair<Int, Int>) { mc.screen!!.mouseClicked(p.first.toDouble(), p.second.toDouble(), 0) }
@@ -200,11 +234,10 @@ object ForemonProbe : ClientModInitializer {
         step("back to the chest", 5) { mc -> cmd(mc, "tp @s ${origin.x + 1} ${origin.y} ${origin.z} facing ${chest.x} ${chest.y} ${chest.z}") }
         step("use whistle on chest", 20) { mc -> useWhistleOnChest(mc) }
         step("assign machop", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
-        step("switch to building", 20) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
+        pickJob(6, 20)
         step("shot: building menu", 20) { mc -> shot(mc, "41_building_menu") }
         step("press Load plan", 5) { mc ->
-            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height)
-            click(mc, (l.x0 + l.w - 108 + 25) to (l.y0 + 102 + 8))
+            dev.foremon.client.LitematicaCompat.upload(chest)
             log.info("PROBE action bar after Load plan: {}", mc.gui.javaClass.getDeclaredField("overlayMessageString").let { f -> f.isAccessible = true; (f.get(mc.gui) as? net.minecraft.network.chat.Component)?.string })
         }
         step("check the plan arrived", 60) { mc ->
@@ -290,7 +323,7 @@ object ForemonProbe : ClientModInitializer {
         step("close any screen", 60) { mc -> mc.setScreen(null) }
         step("use whistle on chest", 20) { mc -> useWhistleOnChest(mc) }
         step("assign machop", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
-        step("switch to building", 20) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
+        pickJob(6, 20)
         step("give the site a plan", 10) { mc ->
             val server = mc.singleplayerServer!!
             server.execute {
@@ -386,30 +419,72 @@ object ForemonProbe : ClientModInitializer {
         step("check paused", 20) { mc -> siteState(mc, "after Pause") }
         step("hover the worker card", 5) { mc ->
             val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height)
-            pointAt(mc, (l.cx + (l.cw - 4) / 4) to (l.y0 + 52 + 11 + 18))
+            pointAt(mc, l.worker)
         }
         step("shot: worker tooltip", 20) { mc -> shot(mc, "50_worker_tooltip") }
         step("hover a party Pokemon", 5) { mc -> val s = mc.screen as SiteScreen; pointAt(mc, Layout(s.width, s.height).party(0)) }
         step("shot: party tooltip", 20) { mc -> shot(mc, "51_party_tooltip") }
         step("click the worker card to send it home", 5) { mc ->
             val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height)
-            click(mc, (l.cx + (l.cw - 4) / 4) to (l.y0 + 52 + 11 + 18))
+            click(mc, l.worker)
         }
         step("check sent home", 30) { mc -> siteState(mc, "after sending home"); shot(mc, "52_after_send_home") }
+        // ---- every page of the new book, for a look
+        step("assign machop again", 10) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).party(0)) }
+        step("shot: crew page", 30) { mc -> shot(mc, "60_crew") }
+        step("jobs page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).jobsTab) }
+        step("hover guard", 5) { mc -> val s = mc.screen as SiteScreen; pointAt(mc, Layout(s.width, s.height).job(8)) }
+        step("shot: jobs page", 15) { mc -> shot(mc, "61_jobs") }
+        step("PC page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).pcTab) }
+        step("hover the first PC slot", 30) { mc -> val s = mc.screen as SiteScreen; pointAt(mc, Layout(s.width, s.height).pcSlot(0)) }
+        step("shot: PC page", 15) { mc -> shot(mc, "62_pc") }
+        step("filter page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).filterTab) }
+        step("shot: filter page", 15) { mc -> shot(mc, "63_filter") }
+        step("chests page", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).chestsTab) }
+        step("shot: chests page", 15) { mc -> shot(mc, "64_chests") }
+        pickJob(8)
+        step("map page", 30) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).chestsTab) }
+        step("draw a guard area", 10) { mc ->
+            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); val n = 2 * s.data.getInt("mapRadius") + 1
+            val a = l.mapCell(n, 2, 2); val b = l.mapCell(n, 8, 9)
+            s.mouseClicked(a.first.toDouble(), a.second.toDouble(), 0); s.mouseReleased(b.first.toDouble(), b.second.toDouble(), 0)
+        }
+        step("route tool", 10) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).mapTool(3)) }
+        step("add stops", 5) { mc ->
+            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); val n = 2 * s.data.getInt("mapRadius") + 1
+            click(mc, l.mapCell(n, 12, 12))
+        }
+        step("add a second stop", 3) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).mapCell(2 * s.data.getInt("mapRadius") + 1, 14, 4)) }
+        step("add a third stop", 3) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).mapCell(2 * s.data.getInt("mapRadius") + 1, 4, 14)) }
+        step("select tool", 10) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).mapTool(4)) }
+        step("select the area", 5) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, l.mapCell(2 * s.data.getInt("mapRadius") + 1, 5, 5)) }
+        step("shot: map page", 20) { mc -> shot(mc, "65_map"); siteState(mc, "after drawing on the map") }
+        step("big map", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).bigMapButton) }
+        step("shot: big map", 15) { mc -> shot(mc, "66_big_map") }
+        step("back to the book", 5) { mc -> mc.screen!!.keyPressed(256, 0, 0) }
+        step("shot: back from the big map", 10) { mc -> shot(mc, "67_back_from_big_map") }
+        step("open skills", 5) { _ -> send("skills") }
+        step("shot: skills", 30, { it.screen is HubScreen }) { mc -> shot(mc, "68_skills") }
+        step("labour", 5) { mc -> val s = mc.screen as HubScreen; click(mc, Layout(s.width, s.height).branch(1)) }
+        step("shot: labour", 10) { mc -> shot(mc, "69_skills_labour") }
+        step("open perks", 5) { _ -> send("perks") }
+        step("shot: perks", 30) { mc -> shot(mc, "70_perks") }
+        step("open dex", 5) { _ -> send("dex") { it.putString("query", "machop") } }
+        step("shot: dex", 30) { mc -> shot(mc, "71_dex") }
+        step("open guide", 5) { mc -> (mc.screen as HubScreen).accept("guide", CompoundTag()) }
+        step("shot: guide", 10) { mc -> shot(mc, "72_guide") }
+        step("open board", 5) { _ -> send("board") }
+        step("shot: board", 30) { mc -> shot(mc, "73_board") }
         step("open the server tab", 5) { _ -> send("admin") }
         step("click Stamina and food", 30, { it.screen is HubScreen }) { mc ->
-            val s = mc.screen as HubScreen
-            val w = minOf(430, s.width - 16); val h = minOf(236, s.height - 16)
-            val x0 = (s.width - w) / 2; val y0 = (s.height - h) / 2
-            val rowY = y0 + 34 + 14 + 4 * 22
-            click(mc, (x0 + 6 + (w - 12) - 62 + 30) to (rowY + 2 + 8))
+            // Rows: mode (34 high), then the others alphabetically; upkeep is the fourth after mode.
+            val s = mc.screen as HubScreen; val l = Layout(s.width, s.height)
+            click(mc, (l.lx + l.pw - 22) to (l.top + 14 + 34 + 3 * 22 + 10))
         }
         step("check the setting changed", 30) { mc -> siteState(mc, "after clicking Stamina and food"); shot(mc, "53_server_setting") }
         step("click it again to put it back", 5) { mc ->
-            val s = mc.screen as HubScreen
-            val w = minOf(430, s.width - 16); val h = minOf(236, s.height - 16)
-            val x0 = (s.width - w) / 2; val y0 = (s.height - h) / 2
-            click(mc, (x0 + 6 + (w - 12) - 62 + 30) to (y0 + 34 + 14 + 4 * 22 + 2 + 8))
+            val s = mc.screen as HubScreen; val l = Layout(s.width, s.height)
+            click(mc, (l.lx + l.pw - 22) to (l.top + 14 + 34 + 3 * 22 + 10))
         }
         step("check it is back", 30) { mc -> siteState(mc, "after clicking again") }
         step("done", 10) { _ -> log.info("PROBE DONE") }
@@ -465,8 +540,8 @@ object ForemonProbe : ClientModInitializer {
             cmd(mc, "tp @s ${origin.x + 1} ${origin.y} ${origin.z} facing ${chest.x} ${chest.y} ${chest.z}")
         }
         step("open the site", 30) { mc -> useWhistleOnChest(mc) }
-        step("switch to building", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
-        step("load plan", 20) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.x0 + l.w - 108 + 25) to (l.y0 + 102 + 8)) }
+        pickJob(6, 30, { it.screen is SiteScreen })
+        step("load plan", 20) { _ -> dev.foremon.client.LitematicaCompat.upload(chest) }
         step("start building", 40) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
         step("camera on the house", 5) { mc ->
             mc.setScreen(null)
@@ -517,8 +592,8 @@ object ForemonProbe : ClientModInitializer {
         step("close any screen", 60) { mc -> mc.setScreen(null) }
         step("place the village house in Litematica", 10) { mc -> placeSchematic(mc, "plains_big_house_1.litematic", where) }
         step("use whistle on chest", 40) { mc -> useWhistleOnChest(mc) }
-        step("switch to building", 30, { it.screen is SiteScreen }) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(6)) }
-        step("load plan", 20) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.x0 + l.w - 108 + 25) to (l.y0 + 102 + 8)) }
+        pickJob(6, 30, { it.screen is SiteScreen })
+        step("load plan", 20) { _ -> dev.foremon.client.LitematicaCompat.upload(chest) }
         step("crew, extra chests and materials", 60) { mc ->
             val server = mc.singleplayerServer!!
             server.execute {
@@ -609,9 +684,9 @@ object ForemonProbe : ClientModInitializer {
         step("shot: markers, site running", 70) { mc -> shot(mc, "20_markers_running"); report(mc, "markers") }
         step("open site", 5) { mc -> useWhistleOnChest(mc) }
         step("shot: site with extra chest", 30, { it.screen is SiteScreen }) { mc -> shot(mc, "21_site_extra_chest") }
-        step("open the Chests tab", 5) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.cx + l.cw / 4 * 2 + l.cw / 8) to (l.y0 + 40)) }
+        step("open the Chests tab", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).chestsTab) }
         step("shot: chests tab", 20) { mc -> shot(mc, "21b_chests_tab") }
-        step("give the extra chest the next ball", 5) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.cx + 11) to (l.y0 + 52 + 11 + 22 + 10)) }
+        step("give the extra chest the next ball", 5) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, (l.lx + 11) to (l.top + 30 + 11)) }
         step("shot: chests tab after a ball change", 20) { mc -> shot(mc, "21c_chests_ball_changed") }
         step("back to crew", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).crewTab) }
         step("pause by clicking", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
@@ -619,9 +694,8 @@ object ForemonProbe : ClientModInitializer {
         step("shot: markers, site paused", 60) { mc -> shot(mc, "22_markers_paused") }
         // Smelting is something a Machop cannot do, which makes it show the "needs something" icon.
         step("open site", 5) { mc -> useWhistleOnChest(mc) }
-        step("switch to smelting and start", 30, { it.screen is SiteScreen }) { mc ->
-            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, l.job(5)); click(mc, l.start)
-        }
+        pickJob(5, 30, { it.screen is SiteScreen })
+        step("start", 3) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
         step("close", 20) { mc -> mc.setScreen(null) }
         step("stand next to the worker", 40) { mc ->
             val worker = mc.level!!.entitiesForRendering().filterIsInstance<PokemonEntity>().minByOrNull { it.distanceToSqr(Vec3.atCenterOf(chest)) } ?: error("no Pokemon entity on the client")
@@ -630,9 +704,8 @@ object ForemonProbe : ClientModInitializer {
         step("shot: icon above the worker", 30) { mc -> shot(mc, "23_worker_icon"); report(mc, "smelting with a Machop") }
         step("open site for the PC tab", 5) { mc -> cmd(mc, "tp @s ${origin.x + 1} ${origin.y} ${origin.z} facing ${chest.x} ${chest.y} ${chest.z}") }
         step("use whistle", 20) { mc -> useWhistleOnChest(mc) }
-        step("switch to lumber and open the PC tab", 30, { it.screen is SiteScreen }) { mc ->
-            val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, l.job(0)); click(mc, l.pcTab)
-        }
+        pickJob(0, 30, { it.screen is SiteScreen })
+        step("open the PC tab", 3) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).pcTab) }
         step("shot: PC box", 40) { mc -> shot(mc, "28_pc_box") }
         step("assign the first Pokemon in the box by clicking it", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).pcSlot(0)) }
         step("shot: PC box after assigning", 40) { mc -> shot(mc, "29_pc_after_assign"); report(mc, "after assigning from the PC") }
@@ -640,11 +713,11 @@ object ForemonProbe : ClientModInitializer {
         step("shot: crew in the Pokemon look", 15) { mc -> shot(mc, "30_crew_pokemon_look") }
         step("open skills", 5) { _ -> send("skills") }
         step("shot: skill tree", 30, { it.screen is HubScreen }) { mc -> shot(mc, "24_skills") }
-        step("labour branch", 5) { mc -> val s = mc.screen as HubScreen; val l = Layout(s.width, s.height); click(mc, (l.x0 + 6 + 74 + 36) to (l.y0 + 34 + 8)) }
+        step("labour branch", 5) { mc -> val s = mc.screen as HubScreen; val l = Layout(s.width, s.height); click(mc, l.branch(1)) }
         step("shot: labour branch", 15) { mc -> shot(mc, "25_skills_labour") }
         step("open perks", 5) { _ -> send("perks") }
         step("shot: perks", 30) { mc -> shot(mc, "26_perks_lumber") }
-        step("mining perks", 5) { mc -> val s = mc.screen as HubScreen; val l = Layout(s.width, s.height); click(mc, (l.x0 + 6 + 48) to (l.y0 + 34 + 20 + 9)) }
+        step("mining perks", 5) { mc -> val s = mc.screen as HubScreen; val l = Layout(s.width, s.height); click(mc, l.job(1)) }
         step("shot: mining perks", 15) { mc -> shot(mc, "27_perks_mining") }
         step("done", 10) { mc -> log.info("PROBE DONE") }
         step("quit", 10) { mc -> mc.stop() }
@@ -689,7 +762,8 @@ object ForemonProbe : ClientModInitializer {
         step("shot: assigned", 30) { mc -> shot(mc, "02_site_assigned") }
         step("click filter tab", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).filterTab) }
         step("shot: filter", 15) { mc -> shot(mc, "03_filter") }
-        step("click crew tab, then start", 5) { mc -> val s = mc.screen as SiteScreen; val l = Layout(s.width, s.height); click(mc, l.crewTab); click(mc, l.start) }
+        step("click crew tab", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).crewTab) }
+        step("then start", 3) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).start) }
         step("close the menu", 5) { mc -> mc.setScreen(null) }
         // Stand right next to the worker and take a burst of frames, to see the animation, the particles and the log it carries.
         step("stand next to the worker", 60) { mc ->
@@ -708,7 +782,7 @@ object ForemonProbe : ClientModInitializer {
         step("walk to the chest", 5) { mc -> cmd(mc, "tp @s ${origin.x + 1} ${origin.y} ${origin.z} facing ${chest.x} ${chest.y} ${chest.z}") }
         step("reopen site", 20) { mc -> useWhistleOnChest(mc) }
         step("shot: site after lumber", 30, { it.screen is SiteScreen }) { mc -> shot(mc, "06_site_after_lumber") }
-        step("switch to mining by clicking", 5) { mc -> val s = mc.screen as SiteScreen; click(mc, Layout(s.width, s.height).job(1)) }
+        pickJob(1)
         step("walk to the stone", 20) { mc -> mc.setScreen(null); cmd(mc, "tp @s ${origin.x - 1} ${origin.y} ${origin.z + 3} facing ${origin.x - 4} ${origin.y + 1} ${origin.z + 3}") }
         step("sneak", 20) { mc -> sneak(mc, true) }
         step("corner a", 5) { mc -> useWhistleOn(mc, origin.offset(-5, 0, 2)) }
@@ -723,7 +797,7 @@ object ForemonProbe : ClientModInitializer {
         step("shot: skills", 30, { it.screen is HubScreen }) { mc -> shot(mc, "10_skills") }
         step("buy Work Area by clicking its node", 5) { mc ->
             val s = mc.screen as HubScreen; val l = Layout(s.width, s.height)
-            click(mc, (l.x0 + 6 + 2 + 20) to (l.y0 + 34 + 26 + 17))
+            click(mc, l.skillNode(2, 4, 0, 0))
         }
         step("shot: skills bought", 30) { mc -> shot(mc, "11_skills_bought") }
         step("open board", 5) { _ -> send("board") }

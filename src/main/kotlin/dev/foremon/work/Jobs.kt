@@ -552,6 +552,12 @@ object Farming : JobLogic() {
 
     override fun act(c: Ctx, step: Step): Boolean {
         if (!harvest(c, step.pos)) return false
+        // Green Thumb (skill): each harvest may push the young crops around it one stage on.
+        val thumb = c.skill("green_thumb")
+        if (thumb > 0) for (q in BlockPos.betweenClosed(step.pos.offset(-2, -1, -2), step.pos.offset(2, 1, 2))) {
+            val st = c.level.getBlockState(q); val b = st.block
+            if (b is CropBlock && !b.isMaxAge(st) && c.level.random.nextDouble() < thumb) c.level.setBlockAndUpdate(q, b.getStateForAge(b.getAge(st) + 1))
+        }
         // Wide Harvest (level perk): every ripe crop around the one it went for comes in with the same action.
         val r = c.profile.unlock(Job.FARMING, "sweep").toInt()
         if (r > 0) for (q in BlockPos.betweenClosed(step.pos.offset(-r, -1, -r), step.pos.offset(r, 1, r))) {
@@ -718,7 +724,8 @@ object Courier : JobLogic() {
     /** A load takes longer the further it goes. */
     override fun hardness(c: Ctx, step: Step): Double {
         val (from, to) = c.s.routes.getOrNull(step.data) ?: return TRIP_BASE
-        return TRIP_BASE + kotlin.math.sqrt(from.distSqr(to)) / BLOCKS_PER_TRIP
+        // Express Lanes (skill): every load is quicker.
+        return (TRIP_BASE + kotlin.math.sqrt(from.distSqr(to)) / BLOCKS_PER_TRIP) / (1.0 + c.skill("express_lanes"))
     }
 
     override fun stillValid(c: Ctx, step: Step) = worth(c, step.data)
@@ -913,7 +920,8 @@ object Building : JobLogic() {
         val plan = c.s.plan ?: return
         for (st in c.w.supplies) { val left = Inv.insert(c.storage, st); if (!left.isEmpty) c.w.carried.add(left) }
         c.w.supplies.clear()
-        var room = c.capacity()
+        // Quick Fetch (skill): builders take more materials per trip.
+        var room = (c.capacity() * (1.0 + c.skill("quick_fetch"))).toInt()
         var i = plan.index
         var looked = 0
         var missing: Item? = null
@@ -1013,17 +1021,20 @@ object Guard : JobLogic() {
             up.y >= c.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.x, pos.z) - 8 && TORCH.canSurvive(c.level, up)
     }
 
-    /** Hostile, inside the work area and the hunting boxes, and not a neutral mob minding its own business or a named one. */
+    /** How far from the chest guards hunt: the work area, plus the Lookout skill. */
+    private fun huntRadius(c: Ctx) = Workers.radius(c.level, c.s) + c.skill("lookout").toInt()
+
+    /** Hostile, in reach and in this guard's areas, and not a neutral mob minding its own business or a named one. */
     private fun hunts(c: Ctx, m: Mob): Boolean {
-        val r = Workers.radius(c.level, c.s)
+        val r = huntRadius(c)
         return m.isAlive && m is Enemy && !m.hasCustomName() && !(m is NeutralMob && m.target == null) &&
             kotlin.math.abs(m.blockX - c.s.pos.x) <= r && kotlin.math.abs(m.blockZ - c.s.pos.z) <= r &&
-            c.s.zoneAllows(Zone.PATROL, m.blockX, m.blockZ)
+            c.s.zoneAllows(Zone.PATROL, m.blockX, m.blockZ, c.s.posts[c.w.pokemonId] ?: 0)
     }
 
     /** The mob to go after, or null when all is quiet. */
     private fun threat(c: Ctx): Mob? {
-        val r = Workers.radius(c.level, c.s).toDouble()
+        val r = huntRadius(c).toDouble()
         val box = AABB(c.s.pos).inflate(r, Workers.vertical(c.level, c.s).toDouble(), r)
         val mobs = c.level.getEntitiesOfClass(Mob::class.java, box) { hunts(c, it) }
         if (mobs.isEmpty()) return null
@@ -1042,13 +1053,25 @@ object Guard : JobLogic() {
     override fun plan(c: Ctx): Step? {
         threat(c)?.let { return Step(it.blockPosition(), Step.Kind.WORK, it.id) }
         if (c.carriedFull()) return Step(c.s.pos, Step.Kind.CHEST)
-        if (c.s.queue.isEmpty()) return null
-        if (c.w.supplies.none { it.`is`(Items.TORCH) }) {
-            if (Inv.contains(c.storage) { it.`is`(Items.TORCH) }) return Step(c.s.pos, Step.Kind.CHEST)
-            c.status("foremon.status.need_item", ItemStack(Items.TORCH).hoverName.string)
-            return null
+        if (c.s.queue.isNotEmpty()) {
+            if (c.w.supplies.any { it.`is`(Items.TORCH) }) take(c)?.let { return Step(it, Step.Kind.WORK) }
+            else if (Inv.contains(c.storage) { it.`is`(Items.TORCH) }) return Step(c.s.pos, Step.Kind.CHEST)
+            else c.status("foremon.status.need_item", ItemStack(Items.TORCH).hoverName.string)
         }
-        return take(c)?.let { Step(it, Step.Kind.WORK) }
+        return patrol(c)
+    }
+
+    /** With nothing else to do a guard walks the patrol route, from where it left off, skipping points outside its post. */
+    private fun patrol(c: Ctx): Step? {
+        val post = c.s.posts[c.w.pokemonId] ?: 0
+        val route = c.s.patrol
+        // The next stop on the route this guard may walk to, counting from the one it is due at.
+        for (k in route.indices) {
+            val i = (c.w.patrolIndex + k).mod(route.size)
+            val p = route[i]
+            if (c.s.zoneAllows(Zone.PATROL, p.x, p.z, post)) { c.w.patrolIndex = i; return Step(p, Step.Kind.PATROL) }
+        }
+        return null
     }
 
     override fun atChest(c: Ctx) {
@@ -1073,7 +1096,7 @@ object Guard : JobLogic() {
         val m = mob(c, step) ?: return false
         if (m.distanceTo(c.e) > Ticker.reach(c) + 2) return false
         // Harder hits with level; how often it swings comes from its rating, as for every job.
-        val damage = 3f + c.p.level / 8f
+        val damage = (3f + c.p.level / 8f) * (1f + c.skill("sharp_claws").toFloat())
         if (!m.hurt(c.level.damageSources().mobAttack(c.e), damage)) return false
         m.knockback(0.5, c.e.x - m.x, c.e.z - m.z)
         // Cleave (level perk): the same swing catches other mobs close by.

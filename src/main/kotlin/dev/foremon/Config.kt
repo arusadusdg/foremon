@@ -34,9 +34,9 @@ class ConfigData {
         var stuckTicks = 100
         var teleportWhenStuck = true
         var teleportCooldownTicks = 400
-        var baseStamina = 100
+        var baseStamina = 150
         var restTicks = 600
-        var staminaPerBerry = 40
+        var staminaPerBerry = 60
         /** Work XP (skill tree currency) per finished action. */
         var workXpPerAction = 1.0
         /** Every this many actions the Pokemon gains battle EXP and friendship. 0 turns it off. */
