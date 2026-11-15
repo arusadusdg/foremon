@@ -43,3 +43,10 @@ replay_*.log
 *.log
 build/gametest/
 docs/launch/youtubers.md
+
+# Remotion video project
+video/node_modules/
+video/out/
+video/public/footage/
+video/public/img/
+video/public/sfx/

@@ -392,13 +392,17 @@ object ForemonProbe : ClientModInitializer {
     }
 
     /** The menu controls nobody had seen working: Start and Pause, hover tooltips, sending a worker home, and a server setting. */
+    /**
+     * A 1920x1080 window: screenshots and footage double as mod page photos and video (GUI scale 4, every pixel sharp).
+     * The real mouse is ignored, so someone moving it over the window adds no stray tooltips and turns no camera.
+     */
+    private fun bigWindow() = step("big window", 20, { it.screen is TitleScreen }) { mc ->
+        GLFW.glfwSetWindowSize(mc.window.window, 1920, 1080)
+        GLFW.glfwSetCursorPosCallback(mc.window.window, null)
+    }
+
     private fun uiScript() {
-        // Big window: the screenshots double as the mod page photos (GUI scale 4, so every pixel is sharp).
-        step("big window", 20, { it.screen is TitleScreen }) { mc ->
-            GLFW.glfwSetWindowSize(mc.window.window, 1920, 1080)
-            // Ignore the real mouse: someone moving it over the window would put stray tooltips on the photos.
-            GLFW.glfwSetCursorPosCallback(mc.window.window, null)
-        }
+        bigWindow()
         step("create world", 60, { it.screen is TitleScreen }) { mc ->
             mc.createWorldOpenFlows().createFreshLevel(
                 "Foremon Test",
@@ -510,6 +514,7 @@ object ForemonProbe : ClientModInitializer {
     /** Footage for the mod page: a level 55 Machop felling a big tree in one swing, then building a Litematica house. */
     private fun gifScript() {
         lateinit var where: BlockPos
+        bigWindow()
         step("create world", 60, { it.screen is TitleScreen }) { mc ->
             mc.createWorldOpenFlows().createFreshLevel(
                 "Foremon Test",
@@ -519,12 +524,14 @@ object ForemonProbe : ClientModInitializer {
                 mc.screen
             )
         }
-        step("commands", 100, { it.player != null && it.level != null }) { mc ->
+        // Flat worlds have villages at spawn: their trees would get chopped instead of the big oak.
+        step("away from villages", 100, { it.player != null && it.level != null }) { mc -> cmd(mc, "tp @s 3000 -60 3000") }
+        step("commands", 120) { mc ->
             origin = mc.player!!.blockPosition()
             chest = origin.offset(3, 0, 0)
             where = origin.offset(-4, 0, 3)
             for (c in listOf(
-                "gamerule doDaylightCycle false", "time set 1000", "weather clear", "gamerule doMobSpawning false",
+                "gamerule doPokemonSpawning false", "gamerule doDaylightCycle false", "time set 1000", "weather clear", "gamerule doMobSpawning false",
                 "give @s foremon:whistle", "pokegive machop level=55", "pokegive bulbasaur level=10",
                 "setblock ${chest.x} ${chest.y} ${chest.z} minecraft:chest",
                 "place feature minecraft:fancy_oak ${origin.x + 8} ${origin.y} ${origin.z - 3}",
@@ -542,7 +549,8 @@ object ForemonProbe : ClientModInitializer {
             mc.options.hideGui = true
             mc.toasts.clear()
             mc.player!!.abilities.flying = true; mc.player!!.onUpdateAbilities()
-            cmd(mc, "tp @s ${origin.x - 1.5} ${origin.y + 3} ${origin.z - 9.5} facing ${origin.x + 6.5} ${origin.y + 4} ${origin.z - 2.5}")
+            // Close and centred on the oak: the video crops the middle of the frame.
+            cmd(mc, "tp @s ${origin.x + 2.5} ${origin.y + 2} ${origin.z - 8.5} facing ${origin.x + 8.5} ${origin.y + 4} ${origin.z - 2.5}")
         }
         frames("timber", 70, 3)
         step("camera on the build spot", 10) { mc ->
@@ -572,6 +580,7 @@ object ForemonProbe : ClientModInitializer {
     private fun houseScript() {
         lateinit var where: BlockPos
         val extras = ArrayList<BlockPos>()
+        bigWindow()
         step("create world", 60, { it.screen is TitleScreen }) { mc ->
             mc.createWorldOpenFlows().createFreshLevel(
                 "Foremon Test",
