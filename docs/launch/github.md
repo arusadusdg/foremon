@@ -5,7 +5,7 @@ The code is committed locally (branch `main`). Once you are signed in to GitHub 
 
 1. Create a new public repository named `foremon` at https://github.com/new. No README, no licence (both
    are already in the project).
-2. Description: `Put your Cobblemon to work. Fabric 1.21.1 addon. Developed with AI assistance.`
+2. Description: `Put your Cobblemon to work. Fabric and NeoForge 1.21.1 addon.`
 3. Topics: `minecraft`, `minecraft-mod`, `fabric`, `cobblemon`, `pokemon`, `kotlin`.
 4. In the project folder:
 

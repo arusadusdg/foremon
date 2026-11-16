@@ -11,7 +11,7 @@ is ready.
 | Other handles if taken | `@foremonmod`, `@foremon_mc`, `@playforemon` |
 | Display name | Foremon |
 | Profile picture | `docs/media/icon-512.png` |
-| Bio (TikTok allows 80 characters) | `Your Cobblemon actually work. Free Minecraft mod. Made with AI help. Links below` |
+| Bio (TikTok allows 80 characters) | `Your Cobblemon actually work. Free Minecraft mod. Links below` |
 | Link in bio | your Linktree (below) |
 
 TikTok only shows a clickable link in the bio once the account qualifies (it can need 1,000 followers
@@ -26,7 +26,7 @@ Create a free account at https://linktr.ee with the same email (password and che
 |---|---|
 | Username | `foremon` (or the same as your TikTok handle) |
 | Title | Foremon |
-| Bio | `Put your Cobblemon to work. Minecraft 1.21.1, Fabric. Developed with AI assistance.` |
+| Bio | `Put your Cobblemon to work. Minecraft 1.21.1, Fabric and NeoForge.` |
 | Profile image | `docs/media/icon-512.png` |
 
 Links, in this order:
@@ -46,7 +46,7 @@ What is in it:
 1. Title card: "My Pokemon got jobs"
 2. A Machop at level 55 brings a whole tree, leaves and all, down in one swing
 3. Time-lapse: three Pokemon build a real village house from a Litematica schematic
-4. End card: "Foremon, free on Modrinth and CurseForge", with "made with AI assistance"
+4. End card: "Foremon, free on Modrinth and CurseForge"
 
 Caption (switch on "AI-generated content" under "Show more" in the upload form instead of writing it in the caption):
 

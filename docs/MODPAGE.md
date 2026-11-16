@@ -71,20 +71,20 @@ Right-click the air with the whistle for your job sites, the skill tree, the lev
 
 ![Server owners](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/server_owners.png)
 
-- Safe by default: workers only touch blocks and chests their owner could, and claim mods that use Fabric's
-  block-break event are respected.
+- Safe by default: workers only touch blocks and chests their owner could, and claim mods that use Fabric's or
+  NeoForge's block-break event are respected.
 - One switch for Relaxed, Normal or Hardcore, plus every number in `config/foremon.json`.
 - Rules and the skill tree are data, so a data pack can retune everything.
 - `/foremon admin perf` shows what the mod costs per tick. In testing, 20 workers on 5 sites cost under 1 ms per tick.
 
 ![Requirements](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/requirements.png)
 
-Minecraft 1.21.1 with Fabric Loader, and:
+Minecraft 1.21.1 with Fabric or NeoForge, and:
 
 - [Cobblemon](https://www.curseforge.com/minecraft/mc-mods/cobblemon) 1.7.3 or newer (tested on 1.7.3 and 1.8.4)
-- [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api)
-- [Fabric Language Kotlin](https://www.curseforge.com/minecraft/mc-mods/fabric-language-kotlin)
-- Optional: [Litematica](https://www.curseforge.com/minecraft/mc-mods/litematica) (only for building from schematics)
+- On Fabric: [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api) and [Fabric Language Kotlin](https://www.curseforge.com/minecraft/mc-mods/fabric-language-kotlin)
+- On NeoForge: [Kotlin for Forge](https://www.curseforge.com/minecraft/mc-mods/kotlin-for-forge)
+- Optional: [Litematica](https://www.curseforge.com/minecraft/mc-mods/litematica) on Fabric or [Forgematica](https://www.curseforge.com/minecraft/mc-mods/forgematica) on NeoForge (only for building from schematics)
 
 ![Links](https://raw.githubusercontent.com/arusadusdg/foremon/main/docs/media/cf/links.png)
 
@@ -95,7 +95,3 @@ Source code: [github.com/arusadusdg/foremon](https://github.com/arusadusdg/forem
 Also on Modrinth: [modrinth.com/mod/foremon](https://modrinth.com/mod/foremon)
 
 TikTok: [@foremoncobblemon](https://www.tiktok.com/@foremoncobblemon)
-
----
-
-*Foremon was designed by its author and written with the help of an AI coding assistant (Anthropic's Claude), which wrote most of the code, tests and texts under the author's direction. Every feature is checked by automated tests in a real Minecraft server.*

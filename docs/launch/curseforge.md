@@ -17,7 +17,7 @@ projects before they appear.
 
 ## Description
 
-Paste [../MODPAGE.md](../MODPAGE.md). The AI note stays at the very bottom (the user asked for that). Banners: python tools/gen_banners.py <ascii.png>.
+Paste [../MODPAGE.md](../MODPAGE.md). No AI note anywhere on the page (the user's call, 16 Nov). Banners: python tools/gen_banners.py <ascii.png>.
 
 ## File
 

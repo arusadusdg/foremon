@@ -37,7 +37,6 @@ Name: **Foremon**. Icon: `docs/media/icon-512.png`.
 > Download: Modrinth https://modrinth.com/mod/foremon | CurseForge https://www.curseforge.com/minecraft/mc-mods/foremon | Code and bug tracker: GitHub https://github.com/arusadusdg/foremon
 >
 > This is version 1: please report bugs in #bug-reports and share ideas in #ideas.
-> Foremon is developed with the help of an AI coding assistant.
 >
 > Rules: be kind, no spam, keep it about Foremon and Cobblemon, and no asking for or sharing pirated copies of
 > Minecraft.

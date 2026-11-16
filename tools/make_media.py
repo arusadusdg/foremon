@@ -156,7 +156,6 @@ for i in range(75):  # end card
     text(d, 1110, 'free Cobblemon addon', 80, age=i - 4)
     text(d, 1220, 'Modrinth + CurseForge', 80, age=i - 8)
     text(d, 1340, 'link in bio', 90, YELLOW, age=i - 12)
-    text(d, 1460, 'made with AI assistance', 48, age=i - 16)
     emit(c)
 
 import imageio_ffmpeg
