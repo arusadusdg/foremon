@@ -3,20 +3,19 @@ package dev.foremon.net
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.foremon.Config
 import dev.foremon.Foremon
+import dev.foremon.Platform
 import dev.foremon.world.Emote
 import dev.foremon.world.SiteStore
 import dev.foremon.world.ballIndex
-import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
-import net.fabricmc.fabric.api.networking.v1.PlayerLookup
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.codec.StreamCodec
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.entity.Entity
 
 /**
  * All packets of the mod. Work effects are tiny fixed packets because they are frequent; menus use
@@ -99,33 +98,25 @@ object Net {
         }
     }
 
-    fun register() {
-        PayloadTypeRegistry.playS2C().register(Fx.TYPE, Fx.CODEC)
-        PayloadTypeRegistry.playS2C().register(EmoteP.TYPE, EmoteP.CODEC)
-        PayloadTypeRegistry.playS2C().register(View.TYPE, View.CODEC)
-        PayloadTypeRegistry.playS2C().register(Markers.TYPE, Markers.CODEC)
-        PayloadTypeRegistry.playC2S().register(Action.TYPE, Action.CODEC)
-        PayloadTypeRegistry.playC2S().register(PlanPart.TYPE, PlanPart.CODEC)
+    // Each loader registers the packets above and calls these when one arrives (on the server thread).
+    fun onAction(player: ServerPlayer, p: Action) = Actions.guarded(player) { Actions.handle(player, p.tag) }
+    fun onPlanPart(player: ServerPlayer, p: PlanPart) = Actions.guarded(player) { PlanUpload.receive(player, p) }
 
-        ServerPlayNetworking.registerGlobalReceiver(Action.TYPE) { p, ctx ->
-            val player = ctx.player()
-            ctx.server().execute { Actions.guarded(player) { Actions.handle(player, p.tag) } }
-        }
-        ServerPlayNetworking.registerGlobalReceiver(PlanPart.TYPE) { p, ctx ->
-            val player = ctx.player()
-            ctx.server().execute { Actions.guarded(player) { PlanUpload.receive(player, p) } }
-        }
-        // Someone who walks up to a worker later still sees its current emote.
-        EntityTrackingEvents.START_TRACKING.register { entity, player ->
-            if (entity !is PokemonEntity) return@register
-            val tether = entity.tethering ?: return@register
-            val site = SiteStore.of(player.serverLevel()).sites[tether.pasturePos] ?: return@register
-            val w = site.workers.firstOrNull { it.entityId == entity.uuid } ?: return@register
-            if (w.emote != Emote.NONE) ServerPlayNetworking.send(player, EmoteP(entity.id, w.emote.ordinal))
-        }
+    /** Someone who walks up to a worker later still sees its current emote. */
+    fun onStartTracking(entity: Entity, player: ServerPlayer) {
+        if (entity !is PokemonEntity) return
+        val tether = entity.tethering ?: return
+        val site = SiteStore.of(player.serverLevel()).sites[tether.pasturePos] ?: return
+        val w = site.workers.firstOrNull { it.entityId == entity.uuid } ?: return
+        if (w.emote != Emote.NONE && canReceive(player)) send(player, EmoteP(entity.id, w.emote.ordinal))
     }
 
-    private fun canReceive(p: ServerPlayer) = ServerPlayNetworking.canSend(p, Fx.TYPE)
+    private fun send(p: ServerPlayer, payload: CustomPacketPayload) = p.connection.send(ClientboundCustomPayloadPacket(payload))
+
+    private fun canReceive(p: ServerPlayer) = Platform.canSend(p, Fx.TYPE)
+
+    /** Players who can see [e]: everyone who has its chunk loaded. */
+    private fun watching(level: ServerLevel, e: Entity) = level.chunkSource.chunkMap.getPlayers(e.chunkPosition(), false)
 
     private val lastMarkers = HashMap<java.util.UUID, Int>()
 
@@ -196,25 +187,25 @@ object Net {
                 }
             }
             val hash = 31 * (31 * (31 * pos.hashCode() + kinds.hashCode()) + balls.hashCode()) + level.dimension().location().hashCode()
-            if (lastMarkers.put(p.uuid, hash) != hash) ServerPlayNetworking.send(p, Markers(pos.toLongArray(), kinds.toByteArray(), balls.toByteArray()))
+            if (lastMarkers.put(p.uuid, hash) != hash) send(p, Markers(pos.toLongArray(), kinds.toByteArray(), balls.toByteArray()))
         }
     }
 
     fun fx(level: ServerLevel, e: PokemonEntity, kind: Int, pos: BlockPos, state: Int) {
         val range = Config.a.effectRange.toDouble().let { it * it }
         var packet: Fx? = null
-        for (p in PlayerLookup.tracking(e)) {
+        for (p in watching(level, e)) {
             if (p.distanceToSqr(e) > range || !canReceive(p)) continue
-            ServerPlayNetworking.send(p, packet ?: Fx(e.id, kind, pos, state).also { packet = it })
+            send(p, packet ?: Fx(e.id, kind, pos, state).also { packet = it })
         }
     }
 
     fun emote(level: ServerLevel, e: PokemonEntity, emote: Emote) {
-        for (p in PlayerLookup.tracking(e)) if (canReceive(p)) ServerPlayNetworking.send(p, EmoteP(e.id, emote.ordinal))
+        for (p in watching(level, e)) if (canReceive(p)) send(p, EmoteP(e.id, emote.ordinal))
     }
 
     fun view(p: ServerPlayer, kind: String, tag: CompoundTag) {
-        if (canReceive(p)) ServerPlayNetworking.send(p, View(kind, tag))
+        if (canReceive(p)) send(p, View(kind, tag))
     }
 
     /** A short message for the player about one of their job sites. Shown as a toast by the client. */

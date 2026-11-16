@@ -2,6 +2,7 @@ package dev.foremon.test
 
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties
+import com.mojang.authlib.GameProfile
 import dev.foremon.Config
 import dev.foremon.Rules
 import dev.foremon.rules.Capability
@@ -13,24 +14,28 @@ import dev.foremon.world.SiteStore
 import dev.foremon.world.Worker
 import dev.foremon.world.Workers
 import dev.foremon.world.Zone
-import net.fabricmc.fabric.api.gametest.v1.FabricGameTest
-import net.minecraft.world.entity.EntityType
 import net.minecraft.core.BlockPos
 import net.minecraft.gametest.framework.GameTest
 import net.minecraft.gametest.framework.GameTestAssertException
 import net.minecraft.gametest.framework.GameTestHelper
+import net.minecraft.server.level.ClientInformation
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.entity.EntityType
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import java.util.UUID
 
+/** An empty 8x8 test area. Fabric's game test API ships it; the NeoForge test build carries a copy under the same name. */
+const val EMPTY = "fabric-gametest-api-v1:empty"
+
 /**
  * Runs on a real headless server with real Cobblemon Pokemon: every job is set up in a small test
  * area, a worker is put on it, and the test waits until the work is actually done in the world.
  * Run with: gradlew runGametest
  */
-class ForemonGameTest : FabricGameTest {
+class ForemonGameTest {
     private val owner = UUID.fromString("00000000-0000-4000-8000-00000000f0e0")
 
     private fun fail(msg: String): Nothing = throw GameTestAssertException(msg)
@@ -74,9 +79,7 @@ class ForemonGameTest : FabricGameTest {
 
     private fun count(helper: GameTestHelper, pos: BlockPos, item: Item): Int {
         val storage = Inv.storage(helper.level, pos) ?: return 0
-        var n = 0
-        for (v in storage.nonEmptyViews()) if (v.resource.item == item) n += v.amount.toInt()
-        return n
+        return Inv.count(storage, item).toInt()
     }
 
     private fun cleanup(helper: GameTestHelper, s: Site) {
@@ -84,7 +87,7 @@ class ForemonGameTest : FabricGameTest {
         SiteStore.of(helper.level).sites.remove(s.pos)
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    @GameTest(template = EMPTY)
     fun rulesAndProfiles(helper: GameTestHelper) {
         if (Rules.set.jobs.size != Job.entries.size) fail("job rules did not load from the data pack")
         if (Rules.skills.nodes.size < 30) fail("skill tree did not load from the data pack")
@@ -98,7 +101,7 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun lumberFellsATree(helper: GameTestHelper) {
         setup(helper)
         helper.setBlock(BlockPos(5, 0, 5), Blocks.DIRT)
@@ -120,7 +123,7 @@ class ForemonGameTest : FabricGameTest {
         for (x in 4..6) for (z in 4..6) for (y in logs..logs + 1) if (!(x == 5 && z == 5 && y == logs)) helper.setBlock(BlockPos(x, y, z), Blocks.OAK_LEAVES)
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun timberFellsTheWholeTreeInOneSwingAtLevel50(helper: GameTestHelper) {
         setup(helper)
         tree(helper, 5)
@@ -134,7 +137,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun noTimberBelowLevel20(helper: GameTestHelper) {
         setup(helper)
         tree(helper, 5)
@@ -148,7 +151,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun timberTakesFourLogsPerSwingAtLevel20(helper: GameTestHelper) {
         setup(helper)
         tree(helper, 6)
@@ -168,7 +171,7 @@ class ForemonGameTest : FabricGameTest {
         return n
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun leafSweepClearsTheCrownFromLevel10(helper: GameTestHelper) {
         setup(helper)
         tree(helper, 4)
@@ -182,7 +185,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun noLeafSweepBelowLevel10(helper: GameTestHelper) {
         setup(helper)
         tree(helper, 4)
@@ -196,7 +199,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun veinMinerTakesFourOrePerSwingAtLevel15(helper: GameTestHelper) {
         setup(helper)
         for (x in 3..6) helper.setBlock(BlockPos(x, 1, 4), Blocks.COAL_ORE)
@@ -212,7 +215,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun miningClearsTheMarkedArea(helper: GameTestHelper) {
         setup(helper)
         for (x in 3..5) for (z in 3..5) for (y in 1..2) helper.setBlock(BlockPos(x, y, z), Blocks.DIRT)
@@ -228,7 +231,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun miningRespectsTheFilter(helper: GameTestHelper) {
         setup(helper)
         helper.setBlock(BlockPos(4, 1, 4), Blocks.DIRT)
@@ -246,7 +249,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun buildingFollowsThePlan(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.BUILDING)
@@ -267,7 +270,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun smeltingWithFire(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.SMELTING)
@@ -281,7 +284,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun sortingTopsUpMatchingChests(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.SORTING)
@@ -301,7 +304,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun buildersTakeMaterialsFromExtraChests(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.BUILDING)
@@ -322,7 +325,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun aFullChestOverflowsIntoExtraChests(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.MINING)
@@ -343,7 +346,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun farmingHarvestsAndReplants(helper: GameTestHelper) {
         setup(helper)
         for (x in 3..5) {
@@ -364,7 +367,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun haulingRespectsEachChestsOwnFilter(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.HAULING)
@@ -386,7 +389,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun haulersFlyNearbyRoutes(helper: GameTestHelper) {
         setup(helper)
         // A Lumber site's chest full of logs, a Smelting site's empty chest, and a Hauling depot between them.
@@ -414,14 +417,14 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    @GameTest(template = EMPTY)
     fun routeEndsCanBeActiveJobSites(helper: GameTestHelper) {
         setup(helper)
         // Sneak-clicking a working Lumber site's chest and then a Smelting site's chest makes a route between them.
         val lumber = site(helper, BlockPos(6, 1, 1), Job.LUMBER).also { it.active = true }
         val smelter = site(helper, BlockPos(6, 1, 6), Job.SMELTING).also { it.active = true }
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
-        val player = helper.makeMockServerPlayerInLevel()
+        val player = testPlayer(helper)
         val first = dev.foremon.net.Actions.routeClick(player, helper.level, depot, lumber.pos, lumber.owner)
         if (first[0] != "foremon.msg.route_from") fail("a job site's chest should start a route, got ${first[0]}")
         val second = dev.foremon.net.Actions.routeClick(player, helper.level, depot, smelter.pos, smelter.owner)
@@ -432,13 +435,13 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    @GameTest(template = EMPTY)
     fun twoSneakClicksMakeARoute(helper: GameTestHelper) {
         setup(helper)
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
         helper.setBlock(BlockPos(5, 1, 1), Blocks.CHEST); helper.setBlock(BlockPos(5, 1, 5), Blocks.CHEST)
         val a = helper.absolutePos(BlockPos(5, 1, 1)); val b = helper.absolutePos(BlockPos(5, 1, 5))
-        val player = helper.makeMockServerPlayerInLevel()
+        val player = testPlayer(helper)
         val first = dev.foremon.net.Actions.routeClick(player, helper.level, depot, a, null)
         if (first[0] != "foremon.msg.route_from") fail("the first click should start a route, got ${first[0]}")
         val second = dev.foremon.net.Actions.routeClick(player, helper.level, depot, b, null)
@@ -454,13 +457,13 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    @GameTest(template = EMPTY)
     fun pickFromInTheMenuThenSneakClickWhereItGoes(helper: GameTestHelper) {
         setup(helper)
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
         helper.setBlock(BlockPos(5, 1, 5), Blocks.CHEST)
         val b = helper.absolutePos(BlockPos(5, 1, 5))
-        val player = helper.makeMockServerPlayerInLevel()
+        val player = testPlayer(helper)
         val first = dev.foremon.net.Actions.menuRouteStart(player, helper.level, depot, depot.pos)
         if (first[0] != "foremon.msg.route_from") fail("picking this depot in the menu should start a route, got ${first[0]}")
         val second = dev.foremon.net.Actions.routeClick(player, helper.level, depot, b, null)
@@ -470,6 +473,16 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
+    /**
+     * A player for actions that only check who is clicking. Never logged in: logging a test player in makes Cobblemon
+     * send it its data, which NeoForge refuses for a connection with no client behind it.
+     */
+    private fun testPlayer(helper: GameTestHelper): ServerPlayer =
+        object : ServerPlayer(helper.level.server, helper.level, GameProfile(UUID.randomUUID(), "test-player"), ClientInformation.createDefault()) {
+            override fun isSpectator() = false
+            override fun isCreative() = true
+        }
+
     /** A job site of the test owner at an absolute position, with its chest. */
     private fun farSite(helper: GameTestHelper, pos: BlockPos, job: Job): Site {
         helper.level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState())
@@ -478,7 +491,7 @@ class ForemonGameTest : FabricGameTest {
         return s
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 6000, batch = "far_route")
+    @GameTest(template = EMPTY, timeoutTicks = 6000, batch = "far_route")
     fun farRouteBringsWoodFromALumberSite600BlocksAway(helper: GameTestHelper) {
         setup(helper)
         withSkill(helper, "remote_control", 1); withSkill(helper, "supply_lines", 1)
@@ -500,7 +513,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 2400, batch = "dispatch")
+    @GameTest(template = EMPTY, timeoutTicks = 2400, batch = "dispatch")
     fun dispatchSendsHaulersWhereTheyAreTold(helper: GameTestHelper) {
         setup(helper)
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
@@ -524,7 +537,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, batch = "route_rules")
+    @GameTest(template = EMPTY, batch = "route_rules")
     fun remoteRoutesNeedRemoteControlAndRange(helper: GameTestHelper) {
         setup(helper)
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING)
@@ -547,7 +560,7 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "bone_meal_on")
+    @GameTest(template = EMPTY, timeoutTicks = 1600, batch = "bone_meal_on")
     fun boneMealSkillGrowsSaplings(helper: GameTestHelper) {
         setup(helper)
         withSkill(helper, "bone_meal", 3)
@@ -566,7 +579,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400, batch = "bone_meal_off")
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "bone_meal_off")
     fun withoutTheSkillSaplingsAreLeftAlone(helper: GameTestHelper) {
         setup(helper)
         withSkill(helper, "bone_meal", 0)
@@ -583,7 +596,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun demolitionTakesTheAreaApart(helper: GameTestHelper) {
         setup(helper)
         for (x in 3..5) for (y in 1..2) helper.setBlock(BlockPos(x, y, 4), Blocks.OAK_PLANKS)
@@ -599,7 +612,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    @GameTest(template = EMPTY, timeoutTicks = 200)
     fun sendingAWorkerHomeKeepsThePokemonSafe(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
@@ -615,14 +628,14 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    @GameTest(template = EMPTY)
     fun theWhistleRecipeExists(helper: GameTestHelper) {
         val r = helper.level.recipeManager.byKey(dev.foremon.Foremon.id("whistle")).orElse(null) ?: fail("no recipe for the whistle")
         if (!r.value().getResultItem(helper.level.registryAccess()).`is`(dev.foremon.Foremon.WHISTLE)) fail("the recipe does not make the whistle")
         helper.succeed()
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    @GameTest(template = EMPTY, timeoutTicks = 200)
     fun roamingBoxGrowsAfterAWorkAreaUpgrade(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
@@ -641,7 +654,7 @@ class ForemonGameTest : FabricGameTest {
     }
 
     // Upkeep changes a global setting, so it runs in its own batch, after the others.
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400, batch = "upkeep")
+    @GameTest(template = EMPTY, timeoutTicks = 400, batch = "upkeep")
     fun tiredWorkersEatBerriesThenSleepWhenThereAreNone(helper: GameTestHelper) {
         setup(helper)
         Config.d.upkeep = true
@@ -672,7 +685,7 @@ class ForemonGameTest : FabricGameTest {
      * and the whole server tick (which also includes Cobblemon moving and animating 20 Pokemon).
      * Runs in its own batch because it builds outside the normal test area.
      */
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1400, batch = "stress")
+    @GameTest(template = EMPTY, timeoutTicks = 1400, batch = "stress")
     fun stressTwentyWorkersFiveSites(helper: GameTestHelper) {
         setup(helper)
         val level = helper.level
@@ -720,7 +733,7 @@ class ForemonGameTest : FabricGameTest {
 
     // ------------------------------------------------------------ level perks
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun wideHarvestTakesTheRowInOneAction(helper: GameTestHelper) {
         setup(helper)
         for (x in 3..4) {
@@ -737,7 +750,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun bigBatchSmeltsTwoAtOnceAtLevel20(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.SMELTING)
@@ -751,7 +764,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600)
+    @GameTest(template = EMPTY, timeoutTicks = 1600)
     fun quickHandsBuildsTwoBlocksPerActionAtLevel25(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.BUILDING)
@@ -772,7 +785,7 @@ class ForemonGameTest : FabricGameTest {
     // ------------------------------------------------------------ skill upgrades (own batch: they change the shared test owner)
 
     // Guards hunt everything hostile in reach, so each guard test runs in a batch of its own.
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 800, batch = "guard_fight")
+    @GameTest(template = EMPTY, timeoutTicks = 800, batch = "guard_fight")
     fun guardsFightOffMobsButNotInKeepOutBoxes(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.GUARD)
@@ -789,7 +802,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 800, batch = "guard_post")
+    @GameTest(template = EMPTY, timeoutTicks = 800, batch = "guard_post")
     fun aGuardPostedToAnAreaStaysInIt(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.GUARD)
@@ -808,7 +821,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600, batch = "guard_patrol")
+    @GameTest(template = EMPTY, timeoutTicks = 600, batch = "guard_patrol")
     fun idleGuardsWalkThePatrolRoute(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.GUARD)
@@ -823,7 +836,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "guard_torch")
+    @GameTest(template = EMPTY, timeoutTicks = 1600, batch = "guard_torch")
     fun guardsLightDarkSpotsButNotInKeepOutBoxes(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.GUARD)
@@ -845,7 +858,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 800, batch = "crafting")
+    @GameTest(template = EMPTY, timeoutTicks = 800, batch = "crafting")
     fun craftingMakesWhatTheFilterAsksFor(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.CRAFTING)
@@ -861,7 +874,7 @@ class ForemonGameTest : FabricGameTest {
     }
 
     // The whole chain: the crafter is short of coal and asks, the depot's hauler brings it from another site, the crafter makes torches.
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "requests")
+    @GameTest(template = EMPTY, timeoutTicks = 1600, batch = "requests")
     fun haulersBringWhatACrafterAsksFor(helper: GameTestHelper) {
         setup(helper)
         val depot = site(helper, BlockPos(1, 1, 1), Job.HAULING).also { it.fillRequests = true }
@@ -881,7 +894,7 @@ class ForemonGameTest : FabricGameTest {
     private fun withSkill(helper: GameTestHelper, node: String, level: Int = 1) { Rules.state(helper.level.server, owner).bought[node] = level }
     private fun dropSkill(helper: GameTestHelper, node: String) { Rules.state(helper.level.server, owner).bought.remove(node) }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "skills")
+    @GameTest(template = EMPTY, timeoutTicks = 1600, batch = "skills")
     fun treeFellerSkillFellsTheWholeTreeAtAnyLevel(helper: GameTestHelper) {
         setup(helper)
         withSkill(helper, "tree_feller")
@@ -898,7 +911,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "skills")
+    @GameTest(template = EMPTY, timeoutTicks = 1600, batch = "skills")
     fun veinMinerSkillTakesTheVeinAtAnyLevel(helper: GameTestHelper) {
         setup(helper)
         withSkill(helper, "vein_miner")
@@ -915,7 +928,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1600, batch = "skills")
+    @GameTest(template = EMPTY, timeoutTicks = 1600, batch = "skills")
     fun twinFurnaceSkillSmeltsTwoAtOnce(helper: GameTestHelper) {
         setup(helper)
         withSkill(helper, "twin_furnace")
@@ -931,7 +944,7 @@ class ForemonGameTest : FabricGameTest {
         }
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200, batch = "skills")
+    @GameTest(template = EMPTY, timeoutTicks = 200, batch = "skills")
     fun packMuleSkillCarriesMore(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)
@@ -947,7 +960,7 @@ class ForemonGameTest : FabricGameTest {
         helper.succeed()
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    @GameTest(template = EMPTY, timeoutTicks = 200)
     fun breakingTheChestSendsWorkersHome(helper: GameTestHelper) {
         setup(helper)
         val s = site(helper, BlockPos(1, 1, 1), Job.LUMBER)

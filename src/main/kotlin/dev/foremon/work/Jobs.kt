@@ -12,8 +12,6 @@ import dev.foremon.world.Site
 import dev.foremon.world.Step
 import dev.foremon.world.Workers
 import dev.foremon.world.Zone
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
-import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.sounds.SoundEvents
@@ -670,9 +668,7 @@ object Courier : JobLogic() {
     private val FAR_TICKET = net.minecraft.server.level.TicketType.create<net.minecraft.world.level.ChunkPos>(
         "foremon_route", Comparator.comparingLong { it.toLong() }, FAR_REST_TICKS.toInt())
 
-    private class Route(val from: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
-                        val to: net.fabricmc.fabric.api.transfer.v1.storage.Storage<net.fabricmc.fabric.api.transfer.v1.item.ItemVariant>,
-                        val test: (ItemStack) -> Boolean)
+    private class Route(val from: Store, val to: Store, val test: (ItemStack) -> Boolean)
 
     private fun loaded(c: Ctx, i: Int) = c.s.routes.getOrNull(i)?.let { (a, b) -> c.level.isLoaded(a) && c.level.isLoaded(b) } == true
 
@@ -1231,29 +1227,25 @@ object Crafting : JobLogic() {
         if (e.startsWith("#")) null else ResourceLocation.tryParse(e)?.let { BuiltInRegistries.ITEM.getOptional(it).orElse(null) }
     }
 
-    private fun count(c: Ctx, item: Item): Long {
-        var n = 0L
-        for (v in c.storage.nonEmptyViews()) if (v.resource.item == item) n += v.amount
-        return n
-    }
+    private fun count(c: Ctx, item: Item): Long = Inv.count(c.storage, item)
 
-    private class Match(val recipe: CraftingRecipe, val take: Map<ItemVariant, Long>)
+    private class Match(val recipe: CraftingRecipe, val take: Map<Kind, Long>)
 
     /** A recipe for [item] whose ingredients are all in the chests, and what it uses up; or null, noting what is short in [missing]. */
     /** What the chests hold, by kind. */
-    private fun stock(c: Ctx): Map<ItemVariant, Long> {
-        val have = LinkedHashMap<ItemVariant, Long>()
-        for (v in c.storage.nonEmptyViews()) have.merge(v.resource, v.amount, Long::plus)
+    private fun stock(c: Ctx): Map<Kind, Long> {
+        val have = LinkedHashMap<Kind, Long>()
+        for (st in c.storage.contents()) have.merge(Kind(st.copyWithCount(1)), st.count.toLong(), Long::plus)
         return have
     }
 
-    private fun match(c: Ctx, item: Item, missing: Array<net.minecraft.world.item.crafting.Ingredient?>, have: Map<ItemVariant, Long> = stock(c)): Match? {
+    private fun match(c: Ctx, item: Item, missing: Array<net.minecraft.world.item.crafting.Ingredient?>, have: Map<Kind, Long> = stock(c)): Match? {
         for (r in recipes(c, item)) {
-            val left = HashMap(have); val take = HashMap<ItemVariant, Long>()
+            val left = HashMap(have); val take = HashMap<Kind, Long>()
             var ok = true
             for (ing in r.ingredients) {
                 if (ing.isEmpty) continue
-                val v = left.entries.firstOrNull { (k, n) -> n > 0 && ing.test(k.toStack()) }?.key
+                val v = left.entries.firstOrNull { (k, n) -> n > 0 && ing.test(k.stack) }?.key
                 if (v == null) { ok = false; if (missing[0] == null) missing[0] = ing; break }
                 left[v] = left[v]!! - 1
                 take.merge(v, 1L, Long::plus)
@@ -1270,7 +1262,7 @@ object Crafting : JobLogic() {
         val missing = arrayOfNulls<net.minecraft.world.item.crafting.Ingredient>(1)
         val have = stock(c)
         for ((i, t) in targets.withIndex()) {
-            if (have.entries.sumOf { (v, n) -> if (v.item == t) n else 0L } >= STOCK) continue
+            if (have.entries.sumOf { (v, n) -> if (v.stack.item == t) n else 0L } >= STOCK) continue
             if (match(c, t, missing, have) != null) return Step(c.s.pos, Step.Kind.WORK, i)
         }
         val short = missing[0]?.items?.map { it.item }?.distinct().orEmpty()
@@ -1289,15 +1281,19 @@ object Crafting : JobLogic() {
         for (k in 0 until times) {
             if (count(c, item) + c.w.count(c.w.carried) >= STOCK) break
             val m = match(c, item, arrayOfNulls(1)) ?: break
-            // Every ingredient in one go, or none of them: leaving the block without commit puts everything back.
-            var took = true
-            Transaction.openOuter().use { tx ->
-                for ((v, n) in m.take) if (c.storage.extract(v, n, tx) != n) { took = false; return@use }
-                tx.commit()
+            // Every ingredient, or none of them: if one comes up short, what was already taken goes back.
+            val taken = ArrayList<ItemStack>()
+            for ((v, n) in m.take) {
+                val got = c.storage.extract(v.stack, n.toInt(), false)
+                if (got > 0) taken.add(v.stack.copyWithCount(got))
+                if (got < n) break
             }
-            if (!took) break
+            if (taken.sumOf { it.count.toLong() } < m.take.values.sum()) {
+                for (t in taken) Inv.insert(c.storage, t).let { if (!it.isEmpty) c.carry(it) }
+                break
+            }
             // Buckets and the like come back, as at a crafting table.
-            for ((v, n) in m.take) v.item.craftingRemainingItem?.let { rem -> c.carry(ItemStack(rem, n.toInt())) }
+            for ((v, n) in m.take) v.stack.item.craftingRemainingItem?.let { rem -> c.carry(ItemStack(rem, n.toInt())) }
             c.carry(m.recipe.getResultItem(c.level.registryAccess()).copy())
             made++
         }

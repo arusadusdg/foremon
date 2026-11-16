@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0
+
+- **NeoForge**: Foremon now runs on NeoForge 1.21.1 too, with Cobblemon for NeoForge and Kotlin for Forge. Same jobs,
+  menus and rules, in a separate jar (`foremon-neoforge-1.3.0.jar`). Every in-game test passes on both loaders.
+- On NeoForge, workers ask claim and protection mods through NeoForge's block-break event, and modded storage works
+  through NeoForge's item handlers, like any chest. The Building job reads placements from Forgematica.
+
 ## 1.2.1
 
 - Works on Cobblemon 1.8 too: tested on Cobblemon 1.8.4 (every in-game test and every menu), as well as 1.7.3.

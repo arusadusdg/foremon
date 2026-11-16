@@ -159,7 +159,7 @@ object ForemonProbe : ClientModInitializer {
             if (s == null) { log.info("PROBE {}: NO SITE at chest", label); return@execute }
             val storage = Inv.storage(level, chest)
             var logs = 0; var items = 0
-            if (storage != null) for (v in storage.nonEmptyViews()) { items += v.amount.toInt(); if (v.resource.toStack().`is`(net.minecraft.tags.ItemTags.LOGS)) logs += v.amount.toInt() }
+            if (storage != null) for (v in storage.contents()) { items += v.count; if (v.`is`(net.minecraft.tags.ItemTags.LOGS)) logs += v.count }
             log.info("PROBE {}: job={} active={} status='{}' arg='{}' done={} queue={} chestItems={} logsInChest={}", label, s.job.key, s.active, s.status, s.statusArg, s.done, s.queue.size, items, logs)
             for (w in s.workers) {
                 val e = Workers.entity(level, w)
@@ -276,7 +276,7 @@ object ForemonProbe : ClientModInitializer {
             if (site == null) { log.info("PROBE {}: NO SITE", label); counted = Count(-1, -1, 0, 0, -1, false, -1); return@execute }
             val wanted = setOf(net.minecraft.world.item.Items.OAK_PLANKS, net.minecraft.world.item.Items.COBBLESTONE, net.minecraft.world.item.Items.TORCH)
             var inChest = 0; var planks = 0
-            Inv.storage(level, chest)?.let { st -> for (v in st.nonEmptyViews()) if (v.resource.item in wanted) { inChest += v.amount.toInt(); if (v.resource.item == net.minecraft.world.item.Items.OAK_PLANKS) planks += v.amount.toInt() } }
+            Inv.storage(level, chest)?.let { st -> for (v in st.contents()) if (v.item in wanted) { inChest += v.count; if (v.item == net.minecraft.world.item.Items.OAK_PLANKS) planks += v.count } }
             var onWorkers = 0
             for (w in site.workers) for (st in w.carried + w.supplies) if (st.item in wanted) onWorkers += st.count
             var placed = 0

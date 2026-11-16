@@ -1,0 +1,15 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "foremon_gametest"
+version = "1.0.0"
+displayName = "Foremon game tests"
+
+[[dependencies.foremon_gametest]]
+modId = "foremon"
+type = "required"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"

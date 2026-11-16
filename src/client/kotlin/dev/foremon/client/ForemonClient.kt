@@ -1,23 +1,35 @@
 package dev.foremon.client
 
+import com.mojang.blaze3d.vertex.PoseStack
 import dev.foremon.net.Net
-import net.fabricmc.api.ClientModInitializer
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents
+import net.minecraft.client.Camera
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.toasts.SystemToast
+import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload
 
-object ForemonClient : ClientModInitializer {
-    override fun onInitializeClient() {
-        ClientPlayNetworking.registerGlobalReceiver(Net.Fx.TYPE) { p, ctx -> ctx.client().execute { WorkFx.play(p) } }
-        ClientPlayNetworking.registerGlobalReceiver(Net.EmoteP.TYPE) { p, ctx -> ctx.client().execute { Emotes.set(p.entityId, p.emote) } }
-        ClientPlayNetworking.registerGlobalReceiver(Net.View.TYPE) { p, ctx -> ctx.client().execute { view(ctx.client(), p.kind, p.tag) } }
-        ClientPlayNetworking.registerGlobalReceiver(Net.Markers.TYPE) { p, ctx -> ctx.client().execute { ChestMarkers.set(p.positions, p.kinds, p.balls) } }
-        ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> Emotes.clear(); ChestMarkers.clear(); HaulBoards.clear() }
-        WorldRenderEvents.AFTER_ENTITIES.register { Emotes.render(it); ChestMarkers.render(it); HaulBoards.render(it) }
+/** The client side of the mod. Each loader's client entry point forwards its events here. */
+object ForemonClient {
+    /** A packet from the server, on the client thread. */
+    fun receive(p: CustomPacketPayload) {
+        when (p) {
+            is Net.Fx -> WorkFx.play(p)
+            is Net.EmoteP -> Emotes.set(p.entityId, p.emote)
+            is Net.View -> view(Minecraft.getInstance(), p.kind, p.tag)
+            is Net.Markers -> ChestMarkers.set(p.positions, p.kinds, p.balls)
+        }
+    }
+
+    fun send(p: CustomPacketPayload) { Minecraft.getInstance().connection?.send(ServerboundCustomPayloadPacket(p)) }
+
+    fun onDisconnect() { Emotes.clear(); ChestMarkers.clear(); HaulBoards.clear() }
+
+    /** Drawn in the world after entities: emotes, chest markers and Hauling boards. */
+    fun render(pose: PoseStack, buffers: MultiBufferSource, camera: Camera, partial: Float) {
+        Emotes.render(pose, buffers, camera, partial); ChestMarkers.render(pose, buffers, camera, partial); HaulBoards.render(pose, buffers, camera, partial)
     }
 
     private fun view(mc: Minecraft, kind: String, tag: CompoundTag) {

@@ -23,6 +23,15 @@ sourceSets {
 loom {
 	// Client-only code lives in src/client so it can never be loaded on a dedicated server.
 	splitEnvironmentSourceSets()
+}
+
+// src/main and src/client are shared with the NeoForge build (neoforge/); the Fabric-only glue lives beside them.
+sourceSets {
+	main.kotlin.srcDir 'src/fabric/kotlin'
+	client.kotlin.srcDir 'src/fabricClient/kotlin'
+}
+
+loom {
 	mods {
 		"foremon" {
 			sourceSet sourceSets.main

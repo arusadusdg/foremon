@@ -4,7 +4,6 @@ import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.item.PokemonItem
 import dev.foremon.net.Net
 import dev.foremon.rules.Job
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -81,7 +80,7 @@ fun unlockText(id: String, value: Double): MutableComponent = when {
 }
 
 fun send(op: String, fill: (CompoundTag) -> Unit = {}) =
-    ClientPlayNetworking.send(Net.Action(CompoundTag().also { it.putString("op", op); fill(it) }))
+    ForemonClient.send(Net.Action(CompoundTag().also { it.putString("op", op); fill(it) }))
 
 val JOB_ICONS = mapOf(
     Job.LUMBER to Items.IRON_AXE, Job.MINING to Items.IRON_PICKAXE, Job.SORTING to Items.HOPPER, Job.HAULING to Items.CHEST_MINECART,

@@ -1,0 +1,41 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/arusadusdg/foremon/issues"
+
+[[mods]]
+modId = "foremon"
+version = "${version}"
+displayName = "Foremon"
+description = '''Put your Cobblemon to work: lumber, mining, sorting, hauling, farming, smelting, and building straight from Litematica.'''
+logoFile = "assets/foremon/icon.png"
+authors = "Foremon contributors"
+displayURL = "https://github.com/arusadusdg/foremon"
+
+[[dependencies.foremon]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.foremon]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.foremon]]
+modId = "cobblemon"
+type = "required"
+versionRange = "[1.7.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.foremon]]
+modId = "kotlinforforge"
+type = "required"
+versionRange = "[5.3,)"
+ordering = "NONE"
+side = "BOTH"

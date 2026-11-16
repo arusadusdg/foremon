@@ -7,11 +7,7 @@ import dev.foremon.rules.SkillRules
 import dev.foremon.rules.SkillState
 import dev.foremon.rules.SkillTree
 import dev.foremon.world.PlayerStore
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper
-import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.MinecraftServer
-import net.minecraft.server.packs.PackType
 import net.minecraft.server.packs.resources.ResourceManager
 import java.util.UUID
 
@@ -39,14 +35,8 @@ object Rules {
     fun has(server: MinecraftServer, player: UUID, node: String): Boolean = tree().unlocked(PlayerStore.of(server).peek(player), node)
     fun state(server: MinecraftServer, player: UUID): SkillState = PlayerStore.of(server).state(player)
 
-    fun register() {
-        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(object : SimpleSynchronousResourceReloadListener {
-            override fun getFabricId(): ResourceLocation = Foremon.id("rules")
-            override fun onResourceManagerReload(manager: ResourceManager) = reload(manager)
-        })
-    }
-
-    private fun reload(manager: ResourceManager) {
+    /** Called by each loader's server data reload (world start and /reload). */
+    fun reload(manager: ResourceManager) {
         fun read(path: String): String? = manager.getResource(Foremon.id(path)).map { r -> r.open().use { String(it.readAllBytes()) } }.orElse(null)
         // A broken data pack file falls back to defaults for that file and says so, instead of failing the whole reload.
         fun <T> safe(path: String, fallback: T, parse: (String) -> T): T = try {

@@ -12,34 +12,28 @@ import dev.foremon.world.PlayerStore
 import dev.foremon.world.Site
 import dev.foremon.world.SiteStore
 import dev.foremon.world.Workers
-import net.fabricmc.api.ModInitializer
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
-import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.fabricmc.fabric.api.event.player.UseItemCallback
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.core.BlockPos
 import net.minecraft.core.GlobalPos
-import net.minecraft.core.Registry
-import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
-import net.minecraft.world.item.CreativeModeTabs
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.state.properties.ChestType
 import org.slf4j.LoggerFactory
 import kotlin.math.abs
 
-object Foremon : ModInitializer {
+/** The shared part of the mod. Each loader's entry point registers things and forwards its events here. */
+object Foremon {
     const val ID = "foremon"
     val LOG = LoggerFactory.getLogger(ID)
 
@@ -48,8 +42,11 @@ object Foremon : ModInitializer {
 
     fun id(path: String): ResourceLocation = ResourceLocation.fromNamespaceAndPath(ID, path)
 
-    /** The one item of the mod. Use it on a chest to make a job site; everything else happens in its menu. */
-    val WHISTLE: Item = Item(Item.Properties().stacksTo(1))
+    /**
+     * The one item of the mod. Use it on a chest to make a job site; everything else happens in its menu.
+     * Made on first use, which each loader makes happen while items may be registered.
+     */
+    val WHISTLE: Item by lazy { Item(Item.Properties().stacksTo(1)) }
 
     /** Action-bar message from a translation key. Players without the mod see the fallback key rather than nothing. */
     fun tell(player: ServerPlayer, key: String, vararg args: String) {
@@ -57,32 +54,27 @@ object Foremon : ModInitializer {
         player.displayClientMessage(Component.translatable(key, *args), true)
     }
 
-    override fun onInitialize() {
-        Registry.register(BuiltInRegistries.ITEM, id("whistle"), WHISTLE)
-        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register { it.accept(WHISTLE) }
-        Rules.register()
-        Net.register()
+    /** Start of every world tick on the server. */
+    fun tick(level: ServerLevel) { Ticker.tick(level); Net.syncMarkers(level); Net.syncHaul(level) }
 
-        ServerLifecycleEvents.SERVER_STARTING.register { Config.load() }
-        ServerTickEvents.START_WORLD_TICK.register { Ticker.tick(it); Net.syncMarkers(it); Net.syncHaul(it) }
-        ServerPlayConnectionEvents.DISCONNECT.register { handler, _ ->
-            Actions.selected.remove(handler.player.uuid); PlanUpload.forget(handler.player.uuid); Net.forgetMarkers(handler.player.uuid)
-        }
+    fun onDisconnect(player: ServerPlayer) {
+        Actions.selected.remove(player.uuid); PlanUpload.forget(player.uuid); Net.forgetMarkers(player.uuid)
+    }
 
-        UseBlockCallback.EVENT.register { player, level, hand, hit ->
-            if (!player.getItemInHand(hand).`is`(WHISTLE) || player.isSpectator) return@register InteractionResult.PASS
-            if (level is ServerLevel && player is ServerPlayer)
-                Actions.guarded(player) { onWhistle(player, level, hit.blockPos, player.isShiftKeyDown) }
-            InteractionResult.SUCCESS
-        }
-        UseItemCallback.EVENT.register { player, _, hand ->
-            val stack = player.getItemInHand(hand)
-            if (!stack.`is`(WHISTLE)) return@register InteractionResultHolder.pass(stack)
-            // Blowing the whistle in the open brings up the Foreman's Board.
-            if (player is ServerPlayer) Actions.guarded(player) { Actions.sendBoard(player) }
-            InteractionResultHolder.success(stack)
-        }
-        CommandRegistrationCallback.EVENT.register { dispatcher, _, _ -> dispatcher.register(command()) }
+    /** The whistle used on a block, on either side. Anything but PASS stops the block's own use. */
+    fun useOn(player: Player, level: Level, hand: InteractionHand, pos: BlockPos): InteractionResult {
+        if (!player.getItemInHand(hand).`is`(WHISTLE) || player.isSpectator) return InteractionResult.PASS
+        if (level is ServerLevel && player is ServerPlayer)
+            Actions.guarded(player) { onWhistle(player, level, pos, player.isShiftKeyDown) }
+        return InteractionResult.SUCCESS
+    }
+
+    /** The whistle used in the air: blowing it in the open brings up the Foreman's Board. */
+    fun use(player: Player, hand: InteractionHand): InteractionResultHolder<ItemStack> {
+        val stack = player.getItemInHand(hand)
+        if (!stack.`is`(WHISTLE)) return InteractionResultHolder.pass(stack)
+        if (player is ServerPlayer) Actions.guarded(player) { Actions.sendBoard(player) }
+        return InteractionResultHolder.success(stack)
     }
 
     /** A double chest is one job site, whichever half is clicked. */
@@ -167,7 +159,7 @@ object Foremon : ModInitializer {
         store.setDirty()
     }
 
-    private fun command() = Commands.literal("foremon")
+    fun command() = Commands.literal("foremon")
         .then(Commands.literal("board").executes { c -> c.source.playerOrException.let { Actions.sendBoard(it) }; 1 })
         .then(Commands.literal("skills").executes { c -> c.source.playerOrException.let { Actions.sendSkills(it) }; 1 })
         .then(Commands.literal("dex").executes { c -> c.source.playerOrException.let { Actions.sendDex(it, "") }; 1 })

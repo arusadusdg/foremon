@@ -1,6 +1,7 @@
 # Foremon: Pokemon Workers & Automation for Cobblemon
 
-Cobblemon automation: your Pokemon work for you. A Fabric addon for **Cobblemon 1.7.3+** (tested on 1.7.3 and 1.8.4) on **Minecraft 1.21.1**.
+Cobblemon automation: your Pokemon work for you. An addon for **Cobblemon 1.7.3+** (tested on 1.7.3 and 1.8.4) on **Minecraft 1.21.1**,
+for **Fabric** and **NeoForge** (two jars: `foremon-<version>.jar` for Fabric, `foremon-neoforge-<version>.jar` for NeoForge).
 Download: [CurseForge](https://www.curseforge.com/minecraft/mc-mods/foremon) · [Modrinth](https://modrinth.com/mod/foremon) · [GitHub releases](https://github.com/arusadusdg/foremon/releases)
 
 Turn any chest into a job site, assign Pokemon from your party, and they chop trees, dig out
@@ -61,15 +62,25 @@ The rules themselves are data, so a data pack can override them:
 Commands (operators): `/foremon admin list | pauseall | remove <player> | reset <player> | xp <player> <amount> | config [key value]`.
 
 Workers ask for permission as their owner before changing a block, so claim and protection
-mods that use Fabric's block-break event are respected.
+mods that use the loader's block-break event (Fabric's, or NeoForge's `BlockEvent.BreakEvent`) are respected.
+
+On NeoForge the mod needs **Kotlin for Forge** (Cobblemon needs it too, so it is usually there already).
+On NeoForge, the Building job reads placements from **Forgematica**, the NeoForge port of Litematica.
 
 ## Building
+
+`src/main` and `src/client` are shared by both loaders. The Fabric-only glue is in `src/fabric` and `src/fabricClient`;
+the NeoForge build lives in `neoforge/` (its own Gradle build, with its glue in `neoforge/src`).
 
 ```bash
 ./gradlew build
 ```
 
-The jar is in `build/libs/`. Tests:
+```bash
+./gradlew -p neoforge build
+```
+
+The Fabric jar is in `build/libs/`, the NeoForge jar in `neoforge/build/libs/`. Tests:
 
 ```bash
 ./gradlew test
@@ -79,9 +90,13 @@ The jar is in `build/libs/`. Tests:
 ./gradlew runGametest
 ```
 
+```bash
+./gradlew -p neoforge runGameTestServer
+```
+
 `test` checks the rule maths against the shipped data files. `runGametest` starts a headless
 server with real Cobblemon Pokemon and checks that every job actually gets its work done in
-the world.
+the world; `runGameTestServer` runs the same tests on NeoForge.
 
 ```bash
 ./gradlew runProbe

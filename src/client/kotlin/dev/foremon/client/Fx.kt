@@ -1,19 +1,27 @@
 package dev.foremon.client
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import dev.foremon.net.Net
+import dev.foremon.rules.Job
+import dev.foremon.world.BALLS
 import dev.foremon.world.Emote
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext
+import net.minecraft.client.Camera
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.LevelRenderer
 import net.minecraft.client.renderer.LightTexture
+import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.BlockParticleOption
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.Tag
+import net.minecraft.network.chat.Component
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.util.Mth
@@ -21,16 +29,10 @@ import net.minecraft.world.entity.Entity
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import net.minecraft.core.BlockPos
-import net.minecraft.network.chat.Component
-import net.minecraft.nbt.Tag
-import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.state.properties.ChestType
 import net.minecraft.world.phys.AABB
-import dev.foremon.rules.Job
-import dev.foremon.world.BALLS
 
 /**
  * Everything the player sees and hears when a Pokemon works. It all runs on the client from one
@@ -131,15 +133,12 @@ object Emotes {
 
     fun clear() = current.clear()
 
-    fun render(ctx: WorldRenderContext) {
+    fun render(pose: PoseStack, buffers: MultiBufferSource, camera: Camera, partial: Float) {
         if (current.isEmpty()) return
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
-        val pose = ctx.matrixStack() ?: return
-        val buffers = ctx.consumers() ?: return
-        val cam = ctx.camera()
+        val cam = camera
         val camPos = cam.position
-        val partial = ctx.tickCounter().getGameTimeDeltaPartialTick(false)
         val time = (level.gameTime % 100000) + partial
 
         val it = current.int2IntEntrySet().iterator()
@@ -178,14 +177,11 @@ object ChestMarkers {
     fun set(p: LongArray, k: ByteArray, b: ByteArray) { if (p.size == k.size && p.size == b.size) { positions = p; kinds = k; balls = b } }
     fun clear() { positions = LongArray(0); kinds = ByteArray(0); balls = ByteArray(0) }
 
-    fun render(ctx: WorldRenderContext) {
+    fun render(pose: PoseStack, buffers: MultiBufferSource, camera: Camera, partial: Float) {
         if (positions.isEmpty()) return
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
-        val pose = ctx.matrixStack() ?: return
-        val buffers = ctx.consumers() ?: return
-        val cam = ctx.camera().position
-        val partial = ctx.tickCounter().getGameTimeDeltaPartialTick(false)
+        val cam = camera.position
         val time = (level.gameTime % 100000) + partial
 
         for (i in positions.indices) {
@@ -243,16 +239,14 @@ object HaulBoards {
     fun set(t: CompoundTag) { val k = t.getLong("pos"); if (t.getBoolean("gone")) boards.remove(k) else boards[k] = t }
     fun clear() = boards.clear()
 
-    fun render(ctx: WorldRenderContext) {
+    fun render(pose: PoseStack, buffers: MultiBufferSource, camera: Camera, partial: Float) {
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
         // A new world or dimension: lines from the old one do not belong here.
         if (level !== seenLevel) { seenLevel = level; clear(); return }
         if (boards.isEmpty()) return
-        val pose = ctx.matrixStack() ?: return
-        val buffers = ctx.consumers() ?: return
-        val cam = ctx.camera(); val cp = cam.position
-        val now = level.gameTime + ctx.tickCounter().getGameTimeDeltaPartialTick(false)
+        val cam = camera; val cp = cam.position
+        val now = level.gameTime + partial
         val font = mc.font
         for ((key, t) in boards) {
             val pos = BlockPos.of(key)

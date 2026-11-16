@@ -1,7 +1,6 @@
 package dev.foremon
 
 import com.google.gson.GsonBuilder
-import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 
 /**
@@ -61,7 +60,7 @@ class ConfigData {
 
 object Config {
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val file get() = FabricLoader.getInstance().configDir.resolve("foremon.json")
+    private val file get() = Platform.configDir.resolve("foremon.json")
     var d = ConfigData()
         private set
 

@@ -20,8 +20,6 @@ import dev.foremon.world.SiteStore
 import dev.foremon.world.Step
 import dev.foremon.world.Worker
 import dev.foremon.world.Workers
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.Storage
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
@@ -39,14 +37,14 @@ import kotlin.math.sqrt
 
 /** Everything a job needs to know while one worker is being ticked. Reused, never stored. */
 class Ctx(
-    val level: ServerLevel, val s: Site, private val main: Storage<ItemVariant>, val now: Long,
+    val level: ServerLevel, val s: Site, private val main: Store, val now: Long,
 ) {
-    private var pool: Storage<ItemVariant>? = null
+    private var pool: Store? = null
 
     /** Where this site keeps things: its chest plus any extra chests added to it. Resolved at most once per tick. */
     // Sorting and Hauling move items between their chests themselves, so their storage is just the site's own chest.
     // Hauling's chests can be far away: checking them here would load their chunks every tick.
-    val storage: Storage<ItemVariant> get() = pool ?: (if (s.job == Job.SORTING || s.job == Job.HAULING) main else Inv.pool(level, s, main, usableLinks)).also { pool = it }
+    val storage: Store get() = pool ?: (if (s.job == Job.SORTING || s.job == Job.HAULING) main else Inv.pool(level, s, main, usableLinks)).also { pool = it }
 
     private var usable: List<BlockPos>? = null
 
@@ -497,7 +495,7 @@ object Ticker {
 
     // ------------------------------------------------------------ small shared actions
 
-    private fun deposit(c: Ctx, into: Storage<ItemVariant>) {
+    private fun deposit(c: Ctx, into: Store) {
         val left = c.w.carried.map { Inv.insert(into, it) }.filter { !it.isEmpty }
         c.w.carried.clear(); c.w.carried.addAll(left)
     }

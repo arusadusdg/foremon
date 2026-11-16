@@ -3,9 +3,8 @@ package dev.foremon.client
 import dev.foremon.Foremon
 import dev.foremon.net.Net
 import io.netty.buffer.Unpooled
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
-import net.fabricmc.loader.api.FabricLoader
+import dev.foremon.Platform
+import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.world.level.Level
@@ -22,16 +21,16 @@ import kotlin.math.min
  * and mirroring applied, so what the Pokemon build is exactly the ghost the player sees.
  */
 object LitematicaCompat {
-    val available: Boolean by lazy { FabricLoader.getInstance().isModLoaded("litematica") }
+    // On NeoForge, Litematica comes as the Forgematica port.
+    val available: Boolean by lazy { Platform.isModLoaded("litematica") || Platform.isModLoaded("forgematica") }
 
     private val outbox = ArrayDeque<Net.PlanPart>()
 
-    init {
-        // A big schematic is many packets; send a few per tick so the connection never stalls.
-        ClientTickEvents.END_CLIENT_TICK.register { mc ->
-            if (mc.player == null) { outbox.clear(); return@register }
-            repeat(4) { outbox.removeFirstOrNull()?.let { ClientPlayNetworking.send(it) } }
-        }
+    /** Called at the end of every client tick. A big schematic is many packets; a few go out per tick so the connection never stalls. */
+    fun tick(mc: Minecraft) {
+        if (outbox.isEmpty()) return
+        if (mc.player == null) { outbox.clear(); return }
+        repeat(4) { outbox.removeFirstOrNull()?.let { ForemonClient.send(it) } }
     }
 
     /**

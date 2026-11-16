@@ -1,0 +1,88 @@
+plugins {
+	id 'net.neoforged.moddev' version "${moddev_version}"
+	id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
+}
+
+// One version number for both loaders.
+def shared = new Properties()
+file('../gradle.properties').withInputStream { shared.load(it) }
+version = shared.version
+group = shared.group
+base { archivesName = 'foremon-neoforge' }
+
+repositories {
+	mavenCentral()
+	maven { url = 'https://maven.impactdev.net/repository/development/' }
+	maven { url = 'https://thedarkcolour.github.io/KotlinForForge/' }
+}
+
+sourceSets {
+	main {
+		kotlin.srcDir '../src/main/kotlin'
+		kotlin.srcDir '../src/client/kotlin'
+		resources.srcDir '../src/main/resources'
+		resources.exclude 'fabric.mod.json'
+	}
+	// The same in-game tests as the Fabric build, on a real NeoForge server with real Cobblemon Pokemon.
+	gametest {
+		kotlin.srcDir '../src/gametest/kotlin'
+	}
+}
+
+neoForge {
+	version = neo_version
+	mods {
+		foremon { sourceSet sourceSets.main }
+		foremon_gametest { sourceSet sourceSets.gametest }
+	}
+	runs {
+		client {
+			client()
+			// gradlew -p neoforge runClient -Pjoin=localhost:25599 joins that server straight away.
+			if (project.hasProperty('join')) programArguments.addAll('--quickPlayMultiplayer', project.join)
+		}
+		server {
+			server(); programArgument '--nogui'
+			gameDirectory = file('run-server')
+		}
+		gameTestServer {
+			type = 'gameTestServer'
+			sourceSet = sourceSets.gametest
+			loadedMods = [mods.foremon, mods.foremon_gametest]
+			gameDirectory = file('build/gametest')
+		}
+	}
+}
+neoForge.addModdingDependenciesTo(sourceSets.gametest)
+
+configurations {
+	gametestImplementation.extendsFrom implementation
+}
+
+dependencies {
+	implementation "com.cobblemon:neoforge:${cobblemon_version}"
+	implementation "thedarkcolour:kotlinforforge-neoforge:${kff_version}"
+	gametestImplementation sourceSets.main.output
+}
+
+processResources {
+	def version = project.version
+	inputs.property 'version', version
+	filesMatching('META-INF/neoforge.mods.toml') { expand 'version': version }
+	filesMatching(['**/*.json', '**/*.mcmeta']) { filter { String line -> line.trim() } }
+}
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
+kotlin {
+	jvmToolchain(21)
+	// Players get Kotlin from Kotlin for Forge, as old as 5.3 (what Cobblemon accepts), which ships Kotlin 2.0:
+	// only use the Kotlin library as it was in 2.0.
+	compilerOptions { apiVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0 }
+}
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+// Every game test run starts from a fresh world.
+tasks.matching { it.name == 'runGameTestServer' }.configureEach { doFirst { delete layout.buildDirectory.dir('gametest/world') } }

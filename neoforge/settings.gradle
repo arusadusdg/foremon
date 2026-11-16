@@ -1,0 +1,9 @@
+// The NeoForge build. It compiles the same shared code as the Fabric build (../src/main, ../src/client)
+// plus the NeoForge glue in src/. Build it from the repository root with: gradlew -p neoforge build
+pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		maven { url = 'https://maven.neoforged.net/releases' }
+	}
+}
+rootProject.name = 'foremon-neoforge'

@@ -3,19 +3,11 @@ package dev.foremon.work
 import com.mojang.authlib.GameProfile
 import dev.foremon.Config
 import dev.foremon.Foremon
+import dev.foremon.Platform
 import dev.foremon.world.Site
-import net.fabricmc.fabric.api.entity.FakePlayer
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
-import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant
-import net.fabricmc.fabric.api.transfer.v1.storage.Storage
-import net.fabricmc.fabric.api.transfer.v1.storage.base.CombinedStorage
-import net.fabricmc.fabric.api.transfer.v1.storage.base.FilteringStorage
-import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction
-import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
@@ -23,84 +15,106 @@ import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 
 /**
- * All item movement goes through Fabric's transfer API with transactions. That makes every
- * take-and-put atomic (no duplication if something fails half way) and makes modded storage
- * work the same as vanilla chests, with no hard-coded list of container blocks.
+ * A container the workers use: a chest, a barrel or a modded storage. Each loader wraps its own item API in this
+ * (Fabric's transfer API, NeoForge's item handlers), so modded storage works like a vanilla chest on both.
  */
+interface Store {
+    /** What is stored, one stack per slot, read as it is walked so a search can stop early. Copies: changing them changes nothing. */
+    fun contents(): Sequence<ItemStack>
+    /** Puts up to stack.count of [stack] in and returns how many went in. */
+    fun insert(stack: ItemStack, simulate: Boolean): Int
+    /** Takes up to [max] items like [like] (same item and components) and returns how many came out. */
+    fun extract(like: ItemStack, max: Int, simulate: Boolean): Int
+}
+
+/** Several stores as one: put into the first that takes it, take from wherever it is. */
+private class Pool(val parts: List<Store>) : Store {
+    override fun contents() = parts.asSequence().flatMap { it.contents() }
+    override fun insert(stack: ItemStack, simulate: Boolean): Int {
+        var moved = 0
+        for (p in parts) { if (moved >= stack.count) break; moved += p.insert(stack.copyWithCount(stack.count - moved), simulate) }
+        return moved
+    }
+    override fun extract(like: ItemStack, max: Int, simulate: Boolean): Int {
+        var moved = 0
+        for (p in parts) { if (moved >= max) break; moved += p.extract(like, max - moved, simulate) }
+        return moved
+    }
+}
+
+/** A store that only takes items [allows] lets through; anything may be taken out. */
+private class Filtered(val inner: Store, val allows: (ItemStack) -> Boolean) : Store by inner {
+    override fun insert(stack: ItemStack, simulate: Boolean) = if (allows(stack)) inner.insert(stack, simulate) else 0
+}
+
+/** An item with its components, usable as a map key. */
+class Kind(val stack: ItemStack) {
+    override fun equals(other: Any?) = other is Kind && ItemStack.isSameItemSameComponents(stack, other.stack)
+    override fun hashCode() = ItemStack.hashItemAndComponents(stack)
+}
+
 object Inv {
-    fun storage(level: ServerLevel, pos: BlockPos): Storage<ItemVariant>? =
-        ItemStorage.SIDED.find(level, pos, null) ?: ItemStorage.SIDED.find(level, pos, Direction.UP)
+    fun storage(level: ServerLevel, pos: BlockPos): Store? = Platform.storage(level, pos)
 
     /**
      * A job site's whole storage: its own chest first, then every extra chest added to it.
      * Looked up fresh each time it is needed, never cached, so a chest that was just broken can
      * never be written to. Sorting and Hauling keep the extra chests as destinations instead.
      */
-    fun pool(level: ServerLevel, s: Site, main: Storage<ItemVariant>, links: List<BlockPos>): Storage<ItemVariant> {
+    fun pool(level: ServerLevel, s: Site, main: Store, links: List<BlockPos>): Store {
         if (links.isEmpty()) return main
-        val parts = ArrayList<Storage<ItemVariant>>(links.size + 1)
+        val parts = ArrayList<Store>(links.size + 1)
         parts.add(main)
         for (l in links) storage(level, l)?.let { st ->
-            if (st === main) return@let
+            if (st == main) return@let
             // An extra chest with a filter only takes the items its filter allows; anything may be taken out of it.
             val f = s.filterFor(l)
-            parts.add(if (f.entries.isEmpty()) st else object : FilteringStorage<ItemVariant>(st) {
-                override fun canInsert(resource: ItemVariant) = f.allows(resource.toStack())
-            })
+            parts.add(if (f.entries.isEmpty()) st else Filtered(st) { f.allows(it) })
         }
-        return if (parts.size == 1) main else CombinedStorage(parts)
+        return if (parts.size == 1) main else Pool(parts)
     }
 
     /** Inserts as much as fits and returns what did not. */
-    fun insert(storage: Storage<ItemVariant>, stack: ItemStack): ItemStack {
+    fun insert(storage: Store, stack: ItemStack): ItemStack {
         if (stack.isEmpty) return ItemStack.EMPTY
-        Transaction.openOuter().use { tx ->
-            val moved = storage.insert(ItemVariant.of(stack), stack.count.toLong(), tx).toInt()
-            tx.commit()
-            return stack.copyWithCount(stack.count - moved)
-        }
+        return stack.copyWithCount(stack.count - storage.insert(stack, false))
     }
 
     /** Takes up to [max] of the first stored item that passes [test]. */
-    fun extract(storage: Storage<ItemVariant>, max: Int, test: (ItemStack) -> Boolean): ItemStack {
+    fun extract(storage: Store, max: Int, test: (ItemStack) -> Boolean): ItemStack {
         if (max <= 0) return ItemStack.EMPTY
-        for (view in storage.nonEmptyViews()) {
-            val variant = view.resource
-            if (!test(variant.toStack())) continue
-            Transaction.openOuter().use { tx ->
-                val moved = storage.extract(variant, max.toLong(), tx).toInt()
-                tx.commit()
-                if (moved > 0) return variant.toStack(moved)
-            }
+        for (s in storage.contents()) {
+            if (!test(s)) continue
+            val moved = storage.extract(s, max, false)
+            if (moved > 0) return s.copyWithCount(moved)
         }
         return ItemStack.EMPTY
     }
 
-    fun extract(storage: Storage<ItemVariant>, item: Item, max: Int): ItemStack = extract(storage, max) { it.`is`(item) }
+    fun extract(storage: Store, item: Item, max: Int): ItemStack = extract(storage, max) { it.`is`(item) }
 
-    fun contains(storage: Storage<ItemVariant>, test: (ItemStack) -> Boolean): Boolean {
-        for (view in storage.nonEmptyViews()) if (test(view.resource.toStack())) return true
-        return false
-    }
+    fun contains(storage: Store, test: (ItemStack) -> Boolean): Boolean = storage.contents().any(test)
+
+    /** How many of [item] are stored. */
+    fun count(storage: Store, item: Item): Long = storage.contents().sumOf { if (it.`is`(item)) it.count.toLong() else 0L }
 
     /** The first stack [extract] would take, without taking it. */
-    fun peek(storage: Storage<ItemVariant>, max: Int, test: (ItemStack) -> Boolean): ItemStack {
-        for (view in storage.nonEmptyViews()) {
-            val stack = view.resource.toStack(minOf(view.amount, max.toLong()).toInt())
+    fun peek(storage: Store, max: Int, test: (ItemStack) -> Boolean): ItemStack {
+        for (s in storage.contents()) {
+            val stack = s.copyWithCount(minOf(s.count, max))
             if (test(stack)) return stack
         }
         return ItemStack.EMPTY
     }
 
-    /** True if at least one of [stack] would fit. Simulated: the transaction is never committed. */
-    fun fits(storage: Storage<ItemVariant>, stack: ItemStack): Boolean =
-        Transaction.openOuter().use { tx -> storage.insert(ItemVariant.of(stack), 1, tx) > 0 }
+    /** True if at least one of [stack] would fit. Simulated: nothing is moved. */
+    fun fits(storage: Store, stack: ItemStack): Boolean = storage.insert(stack.copyWithCount(1), true) > 0
 }
 
 /** Decides whether a worker may change a block. Asks as the owner, so claim and protection mods get their say. */
 object Protection {
-    private fun fake(level: ServerLevel, s: Site): FakePlayer =
-        FakePlayer.get(level, GameProfile(s.owner, s.ownerName.ifBlank { "foremon" }.take(16)))
+    private fun fake(level: ServerLevel, s: Site): ServerPlayer =
+        Platform.fakePlayer(level, GameProfile(s.owner, s.ownerName.ifBlank { "foremon" }.take(16)))
 
     private fun allowedHere(level: ServerLevel, s: Site, pos: BlockPos): Boolean {
         if (pos == s.pos || pos in s.links) return false
@@ -111,22 +125,21 @@ object Protection {
     fun canBreak(level: ServerLevel, s: Site, pos: BlockPos, state: BlockState): Boolean {
         if (!Config.d.workersMayBreakBlocks || !allowedHere(level, s, pos)) return false
         if (state.getDestroySpeed(level, pos) < 0f) return false
-        return PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, fake(level, s), pos, state, level.getBlockEntity(pos))
+        return Platform.mayBreak(level, fake(level, s), pos, state, level.getBlockEntity(pos))
     }
 
     fun canPlace(level: ServerLevel, s: Site, pos: BlockPos): Boolean {
         if (!Config.d.workersMayPlaceBlocks || !allowedHere(level, s, pos)) return false
-        // There is no common "may place" event on Fabric; the break check is what claim mods hook, so ask that for this spot.
-        return PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, fake(level, s), pos, level.getBlockState(pos), null)
+        // Not every loader has a common "may place" event; the break check is what claim mods hook, so ask that for this spot.
+        return Platform.mayBreak(level, fake(level, s), pos, level.getBlockState(pos), null)
     }
 
     /**
-     * May this real player use the container at [pos]? There is no shared "may open" event on Fabric,
+     * May this real player use the container at [pos]? There is no shared "may open" event,
      * so this asks the block-break event, which is the one claim and protection mods guard.
      */
-    fun playerMayUse(level: ServerLevel, player: net.minecraft.server.level.ServerPlayer, pos: BlockPos): Boolean =
-        level.mayInteract(player, pos) &&
-            PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, player, pos, level.getBlockState(pos), level.getBlockEntity(pos))
+    fun playerMayUse(level: ServerLevel, player: ServerPlayer, pos: BlockPos): Boolean =
+        level.mayInteract(player, pos) && Platform.mayBreak(level, player, pos, level.getBlockState(pos), level.getBlockEntity(pos))
 
     /**
      * May this site's workers use the container at [pos] on their owner's behalf? Asked again every
@@ -135,11 +148,10 @@ object Protection {
      */
     fun ownerMayUse(level: ServerLevel, s: Site, pos: BlockPos): Boolean {
         val fake = fake(level, s)
-        return level.mayInteract(fake, pos) &&
-            PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, fake, pos, level.getBlockState(pos), level.getBlockEntity(pos))
+        return level.mayInteract(fake, pos) && Platform.mayBreak(level, fake, pos, level.getBlockState(pos), level.getBlockEntity(pos))
     }
 
-    private val auditFile by lazy { FabricLoader.getInstance().gameDir.resolve("logs/foremon-audit.log") }
+    private val auditFile by lazy { Platform.gameDir.resolve("logs/foremon-audit.log") }
 
     fun audit(level: ServerLevel, s: Site, action: String, pos: BlockPos, state: BlockState) {
         if (!Config.a.auditLog) return

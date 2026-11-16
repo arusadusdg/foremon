@@ -10,8 +10,8 @@
 	"contact": {},
 	"environment": "*",
 	"entrypoints": {
-		"main": [{ "adapter": "kotlin", "value": "dev.foremon.Foremon" }],
-		"client": [{ "adapter": "kotlin", "value": "dev.foremon.client.ForemonClient" }]
+		"main": [{ "adapter": "kotlin", "value": "dev.foremon.fabric.ForemonFabric" }],
+		"client": [{ "adapter": "kotlin", "value": "dev.foremon.fabric.ForemonFabricClient" }]
 	},
 	"depends": {
 		"fabricloader": ">=0.16.0",
